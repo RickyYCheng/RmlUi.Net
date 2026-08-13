@@ -57,7 +57,7 @@ public:
         return (*m_onLogMessage)(type, message.c_str());
     }
 
-    void JoinPath(Rml::String& translated_path, const Rml::String& document_path, const Rml::String& path) {
+    void JoinPath(Rml::String& translated_path, const Rml::String& document_path, const Rml::String& path) override {
         translated_path = (*m_onJoinPath)(document_path.c_str(), path.c_str());
     }
 

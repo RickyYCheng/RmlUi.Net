@@ -6,7 +6,7 @@
 #include "Pool.h"
 
 RMLUI_CAPI const char* rml_ElementFormControlInput_GetValue(Rml::ElementFormControlInput* element) {
-  return strdup(element->GetValue().c_str());
+  return RMLUI_DUP_STR(element->GetValue().c_str());
 }
 
 RMLUI_CAPI void rml_ElementFormControlInput_SetValue(Rml::ElementFormControlInput* element, const char* value) {

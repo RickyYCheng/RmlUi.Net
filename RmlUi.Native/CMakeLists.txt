@@ -3,10 +3,11 @@ cmake_minimum_required(VERSION 3.14...3.23)
 project(RmlUiNative VERSION 1.0 LANGUAGES CXX)
 
 # Keep build artifacts inside the build tree so that multiple configurations
-# (x86/x64, Debug/Release) never overwrite each other.
+# (x86/x64, Debug/Release) never overwrite each other. Every artifact type lands
+# in the same bin/ directory on every platform for uniform CI handling.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
@@ -28,14 +29,14 @@ set(FREETYPE_INCLUDE_DIR_ft2build "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/incl
 set(FREETYPE_INCLUDE_DIR_freetype2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/include" CACHE PATH "Path to freetype include dir" FORCE)
 if(MSVC)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/freetyped.lib" CACHE FILEPATH "Path to freetype library" FORCE)
+        set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/freetyped.lib" CACHE FILEPATH "Path to freetype library" FORCE)
     else()
-        set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/freetype.lib" CACHE FILEPATH "Path to freetype library" FORCE)
+        set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/freetype.lib" CACHE FILEPATH "Path to freetype library" FORCE)
     endif()
 elseif(WIN32)
-    set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/freetype.lib" CACHE FILEPATH "Path to freetype library" FORCE)
+    set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/freetype.lib" CACHE FILEPATH "Path to freetype library" FORCE)
 else()
-    set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/libfreetype.a" CACHE FILEPATH "Path to freetype library" FORCE)
+    set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/libfreetype.a" CACHE FILEPATH "Path to freetype library" FORCE)
 endif()
 
 add_subdirectory("ext/RmlUi")
