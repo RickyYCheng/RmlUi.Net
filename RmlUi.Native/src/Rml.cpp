@@ -69,7 +69,9 @@ RMLUI_CAPI std::string* rml_CreateString(const char* value) {
 }
 
 RMLUI_CAPI void rml_Log(Rml::Log::Type type,  char* message) {
-    Rml::Log::Message(type, message);
+    // Pass the message as an argument: Log::Message is printf-style and GCC's
+    // -Wformat-security rejects a non-literal format string.
+    Rml::Log::Message(type, "%s", message);
 }
 
 RMLUI_CAPI void rml_UpdateString(std::string* str, const char* new_value) {

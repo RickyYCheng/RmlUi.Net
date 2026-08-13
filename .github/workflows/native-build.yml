@@ -44,15 +44,15 @@ jobs:
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Configure (Linux)
         if: runner.os == 'Linux'
-        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Configure (macOS, universal binary)
         if: runner.os == 'macOS'
-        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
 
       - name: Build native
         run: cmake --build RmlUi.Native/out/build --parallel
