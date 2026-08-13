@@ -89,5 +89,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.rid }}
-          path: RmlUi.Net/runtimes/${{ matrix.rid }}/native/
+          # Upload the whole runtimes tree so the <rid>/native/ directory
+          # structure is preserved inside the artifact.
+          path: RmlUi.Net/runtimes
           if-no-files-found: error

@@ -33,7 +33,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: native-${{ matrix.rid }}
-          path: RmlUi.Net/runtimes/${{ matrix.rid }}/native
+          path: RmlUi.Net/runtimes
 
       - name: Build smoke tests (warnings as errors)
         run: dotnet build tests/RmlUi.Net.SmokeTests/RmlUi.Net.SmokeTests.csproj -c Release -warnaserror

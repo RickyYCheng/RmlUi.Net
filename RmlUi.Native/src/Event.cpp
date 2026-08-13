@@ -24,13 +24,13 @@ RMLUI_CAPI const char* rml_Event_GetEventType(Rml::Event *ev) {
 RMLUI_CAPI const char *rml_Event_GetCurrentElement(Rml::Event *ev, Rml::Element **element) {
     *element = ev->GetCurrentElement();
 
-    return rmlui_type_name(**element);
+    return *element ? Util::GetElementMarshalId(*element) : nullptr;
 }
 
 RMLUI_CAPI const char *rml_Event_GetTargetElement(Rml::Event *ev, Rml::Element **element) {
     *element = ev->GetTargetElement();
 
-    return rmlui_type_name(**element);
+    return *element ? Util::GetElementMarshalId(*element) : nullptr;
 }
 
 RMLUI_CAPI void rml_Event_StopPropagation(Rml::Event *ev) {

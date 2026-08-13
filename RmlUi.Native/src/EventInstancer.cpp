@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include "Pool.h"
+#include "Util.h"
 
 typedef void(*onInstanceEvent)(Rml::Element* target, const char* element_type, Rml::EventId id, const char* name, const Rml::Dictionary& parameters, bool interruptible);
 
@@ -18,7 +19,7 @@ public:
     }
 
     Rml::EventPtr InstanceEvent(Rml::Element* target, Rml::EventId id, const Rml::String& type, const Rml::Dictionary& parameters, bool interruptible) override {
-      (*m_onInstanceEvent)(target, rmlui_type_name(target), id, type.c_str(), parameters, interruptible);
+      (*m_onInstanceEvent)(target, Util::GetElementMarshalId(target), id, type.c_str(), parameters, interruptible);
       
       return Rml::EventPtr(new Rml::Event(target, id, type, parameters, interruptible));
     }

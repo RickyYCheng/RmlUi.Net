@@ -30,14 +30,14 @@ RMLUI_CAPI const char *rml_Element_GetElementByID(Rml::Element *element, const c
     *foundElement = element->GetElementById(id);
 
     if (*foundElement) {
-        return rmlui_type_name(**foundElement);
+        return Util::GetElementMarshalId(*foundElement);
     }
 
     return nullptr;
 }
 
 RMLUI_CAPI const char *rml_Element_GetElementTypeName(Rml::Element *element) {
-    return rmlui_type_name(*element);
+    return Util::GetElementMarshalId(element);
 }
 
 RMLUI_CAPI const char *rml_Element_GetOwnerDocument(Rml::Element *element, Rml::Element **foundElement) {
@@ -63,7 +63,7 @@ RMLUI_CAPI const char *rml_Element_GetOwnerDocument(Rml::Element *element, Rml::
         }
 
         // Safely get type name
-        return ownerDocument ? rmlui_type_name(*ownerDocument) : nullptr;
+        return ownerDocument ? Util::GetElementMarshalId(ownerDocument) : nullptr;
     }
     catch (...) {
         // Handle any unexpected exceptions

@@ -5,27 +5,32 @@
 
 class Util {
 public:
+    // Returns a stable, compiler-independent type name for the element. The
+    // managed side matches on these exact strings, so they intentionally mirror
+    // what MSVC's typeid().name() produces ("class Rml::..."). RmlUi's own
+    // rmlui_type_name() cannot be used here: on GCC/Clang it returns mangled
+    // names from the Itanium ABI.
     static const char *GetElementMarshalId(Rml::Element *element) {
         if (dynamic_cast<Rml::ElementDocument *>(element)) {
-            return "ElementDocument";
-        } else if (dynamic_cast<Rml::ElementForm *>(element)) {
-            return "ElementForm";
-        } else if (dynamic_cast<Rml::ElementFormControl *>(element)) {
-            return "ElementFormControl";
+            return "class Rml::ElementDocument";
         } else if (dynamic_cast<Rml::ElementFormControlInput *>(element)) {
-            return "ElementFormControlInput";
+            return "class Rml::ElementFormControlInput";
         } else if (dynamic_cast<Rml::ElementFormControlSelect *>(element)) {
-            return "ElementFormControlSelect";
+            return "class Rml::ElementFormControlSelect";
         } else if (dynamic_cast<Rml::ElementFormControlTextArea *>(element)) {
-            return "ElementFormControlTextArea";
+            return "class Rml::ElementFormControlTextArea";
         } else if (dynamic_cast<Rml::ElementProgress *>(element)) {
-            return "ElementProgress";
+            return "class Rml::ElementProgress";
         } else if (dynamic_cast<Rml::ElementTabSet *>(element)) {
-            return "ElementTabSet";
+            return "class Rml::ElementTabSet";
         } else if (dynamic_cast<Rml::ElementText *>(element)) {
-            return "ElementText";
+            return "class Rml::ElementText";
+        } else if (dynamic_cast<Rml::ElementFormControl *>(element)) {
+            return "class Rml::ElementFormControl";
+        } else if (dynamic_cast<Rml::ElementForm *>(element)) {
+            return "class Rml::ElementForm";
         }
 
-        return "Element";
+        return "class Rml::Element";
     }
 };
