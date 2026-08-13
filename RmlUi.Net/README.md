@@ -1,17 +1,17 @@
 ﻿# RmlUi.Net
 
-Bindings C# pour [RmlUi](https://github.com/mikke89/RmlUi) — moteur d'interface
-utilisateur natif basé sur HTML/CSS. RmlUi embarqué : **6.2**.
+C# bindings for [RmlUi](https://github.com/mikke89/RmlUi) — a native UI library
+based on HTML/CSS. Embedded RmlUi: **6.2**.
 
-## Plateformes supportées
+## Supported platforms
 
-| RID | Fichier natif |
+| RID | Native file |
 | --- | --- |
 | `win-x64`, `win-x86` | `runtimes/<rid>/native/RmlUiNative.dll` |
 | `linux-x64` | `runtimes/linux-x64/native/libRmlUiNative.so` |
-| `osx-x64` | `runtimes/osx-x64/native/RmlUiNative.dylib` (universel arm64+x86_64) |
+| `osx-x64` | `runtimes/osx-x64/native/RmlUiNative.dylib` (universal arm64+x86_64) |
 
-## Démarrage rapide
+## Quick start
 
 ```csharp
 using RmlUiNet;
@@ -33,12 +33,13 @@ Rml.Shutdown();
 
 ## Version 1.1.0
 
-Restauration des 51 exports natifs manquants de la 1.0.1 (plus aucune
-`EntryPointNotFoundException`), correction de `Element.SetAttribute`/`SetProperty`
-pour les chaînes vides, builds natifs sur les quatre plateformes. Détails dans le
-[CHANGELOG](https://github.com/Chorizite/RmlUi.Net/blob/master/CHANGELOG.md).
+Restores the 51 native exports that were missing from 1.0.1 (no more
+`EntryPointNotFoundException`), fixes `Element.SetAttribute`/`SetProperty` for
+empty string values, and ships native builds for all four platforms. See the
+[CHANGELOG](https://github.com/Chorizite/RmlUi.Net/blob/master/CHANGELOG.md)
+for details.
 
-## Licence
+## License
 
-MIT. RmlUi (MIT) et FreeType (FTL/GPLv2) sont embarqués sous leurs licences
-respectives.
+MIT. RmlUi (MIT) and FreeType (FTL/GPLv2) are embedded under their respective
+licenses.
