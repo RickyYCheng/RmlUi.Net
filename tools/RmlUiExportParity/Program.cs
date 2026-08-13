@@ -337,6 +337,7 @@ internal static class Program
             const uint CPU_TYPE_ARM64 = 0x0100000C;
 
             int architectureCount = ReadInt32(data, 4, littleEndian);
+            ISet<string>? common = null;
             for (int i = 0; i < architectureCount; i++)
             {
                 int entry = 8 + i * 20;
@@ -348,8 +349,18 @@ internal static class Program
                 {
                     byte[] slice = new byte[size];
                     Array.Copy(data, offset, slice, 0, size);
-                    return ParseMachOSlice(slice);
+                    ISet<string> names = ParseMachOSlice(slice);
+                    // Every slice must export every managed entry point: the
+                    // loader picks one slice per process architecture.
+                    common = common is null
+                        ? names
+                        : new HashSet<string>(common.Intersect(names), StringComparer.Ordinal);
                 }
+            }
+
+            if (common is not null)
+            {
+                return common;
             }
 
             throw new InvalidDataException("Universal binary contains no x86_64 or arm64 slice");
@@ -413,6 +424,12 @@ internal static class Program
                     if ((type & N_EXT) != 0 && (type & N_TYPE) != N_UNDF)
                     {
                         string name = ReadAsciiZ(data, checked((int)(stringOffset + nameIndex)));
+                        // Mach-O prefixes C symbol names with a leading
+                        // underscore in the symbol table.
+                        if (name.StartsWith('_'))
+                        {
+                            name = name[1..];
+                        }
                         if (name.Length > 0)
                         {
                             result.Add(name);
