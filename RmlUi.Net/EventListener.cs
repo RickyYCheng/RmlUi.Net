@@ -45,7 +45,7 @@ namespace RmlUiNet
                     Util.GetOrThrowElementByTypeName(elementPtr, elementType)
                 );
             }
-            catch (Exception ex) {
+            catch (Exception) {
                 //CoreUIPlugin.UI.Log?.LogTrace($"AttachEvent: {ex}");
             }
         }
@@ -58,7 +58,7 @@ namespace RmlUiNet
                     Util.GetOrThrowElementByTypeName(elementPtr, elementType)
                 );
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 //CoreUIPlugin.UI.Log?.LogTrace($"DetachEvent: {ex}");
             }

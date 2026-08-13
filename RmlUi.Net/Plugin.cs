@@ -84,11 +84,11 @@ namespace RmlUiNet {
         }
 
         internal virtual void OnDocumentLoadInternal(IntPtr documentPtr) {
-            OnDocumentLoad(ElementDocument.Create(documentPtr));
+            OnDocumentLoad(ElementDocument.Create(documentPtr) ?? throw new Exception("Failed to create document wrapper"));
         }
 
         internal virtual void OnDocumentUnloadInternal(IntPtr documentPtr) {
-            OnDocumentUnload(ElementDocument.Create(documentPtr));
+            OnDocumentUnload(ElementDocument.Create(documentPtr) ?? throw new Exception("Failed to create document wrapper"));
         }
 
         internal virtual void OnContextCreateInternal(IntPtr contextPtr) {

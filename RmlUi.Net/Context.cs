@@ -11,7 +11,7 @@ namespace RmlUiNet {
         /// <summary>
         /// Returns the name of the context.
         /// </summary>
-        public string Name => Marshal.PtrToStringAnsi(Native.Context.GetName(NativePtr));
+        public string Name => Marshal.PtrToStringAnsi(Native.Context.GetName(NativePtr)) ?? string.Empty;
 
         /// <summary>
         /// Returns a hint on whether the mouse is currently interacting with any elements in this context.
@@ -155,7 +155,7 @@ namespace RmlUiNet {
 
         public DataModelConstructor CreateDataModel(string name) {
             var ptr = Native.Context.CreateDataModel(NativePtr, name);
-            return DataModelConstructor.GetOrCreateCache(ptr, ptr => new DataModelConstructor(ptr));
+            return DataModelConstructor.GetOrCreateCache(ptr, ptr => new DataModelConstructor(ptr)) ?? throw new Exception("Failed to create data model");
         }
 
         public DataModelConstructor? GetDataModel(string name)

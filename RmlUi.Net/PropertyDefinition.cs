@@ -11,7 +11,7 @@ namespace RmlUiNet
 {
     public unsafe class PropertyDefinition : RmlBase<PropertyDefinition>, IDisposable
     {
-        public VariableDefinition Definition { get; protected set; }
+        public VariableDefinition Definition { get; protected set; } = null!;
 
         public PropertyDefinition(IntPtr nativePtr) : base(nativePtr)
         {

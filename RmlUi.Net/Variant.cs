@@ -35,7 +35,7 @@ namespace RmlUiNet {
                     case VariantType.STRING:
                         var strPtr = Native.Variant.GetAsString(NativePtr, "");
                         var strValue = Marshal.PtrToStringAnsi(strPtr);
-                        Marshal.FreeHGlobal(strPtr);
+                        Native.Rml.FreeStringBuffer(strPtr);
                         return strValue;
                     default:
                         return null;

@@ -20,28 +20,28 @@ namespace RmlUiNet
                 throw new Exception("Pointer not found in cache");
             }
 
-            return _cache[ptr] as T;
+            return (_cache[ptr] as T) ?? throw new InvalidCastException($"Cached instance of type {_cache[ptr].GetType()} is not assignable to {typeof(T)}");
         }
 
         public T GetOrCreate<T>(IntPtr ptr, CreateInstance createInstance)
             where T : class 
         {
             if (ptr == IntPtr.Zero) {
-                return default;
+                return null!;
             }
 
             if (!_cache.TryGetValue(ptr, out IRmlBase? value)) {
-                value = createInstance(ptr);
+                value = createInstance(ptr) ?? throw new Exception($"Failed to create instance of {typeof(T)} for pointer {ptr:X}");
                 _cache.Add(ptr, value);
             }
             if (value is not T && value.GetType() == typeof(ElementGeneric))
             {
                 _cache.Remove(ptr);
-                value = createInstance(ptr);
+                value = createInstance(ptr) ?? throw new Exception($"Failed to create instance of {typeof(T)} for pointer {ptr:X}");
                 _cache.Add(ptr, value);
             }
 
-            return value as T;
+            return (value as T) ?? throw new InvalidCastException($"Cached instance of type {value.GetType()} is not assignable to {typeof(T)}");
         }
 
         public void ManuallyRegisterCache(IntPtr ptr, IRmlBase instance)

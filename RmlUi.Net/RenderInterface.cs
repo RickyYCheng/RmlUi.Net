@@ -6,15 +6,15 @@ namespace RmlUiNet
 {
     public unsafe class RenderInterface : RmlBase<RenderInterface>
     {
-        private Native.RenderInterface.OnCompileGeometry _onCompileGeometry;
-        private Native.RenderInterface.OnRenderGeometry _onRenderGeometry;
-        private Native.RenderInterface.OnReleaseGeometry _onReleaseGeometry;
-        private Native.RenderInterface.OnLoadTexture _onLoadTexture;
-        private Native.RenderInterface.OnGenerateTexture _onGenerateTexture;
-        private Native.RenderInterface.OnReleaseTexture _onReleaseTexture;
-        private Native.RenderInterface.OnEnableScissorRegion _onEnableScissorRegion;
-        private Native.RenderInterface.OnSetScissorRegion _onSetScissorRegion;
-        private Native.RenderInterface.OnSetTransform _onSetTransform;
+        private Native.RenderInterface.OnCompileGeometry _onCompileGeometry = null!;
+        private Native.RenderInterface.OnRenderGeometry _onRenderGeometry = null!;
+        private Native.RenderInterface.OnReleaseGeometry _onReleaseGeometry = null!;
+        private Native.RenderInterface.OnLoadTexture _onLoadTexture = null!;
+        private Native.RenderInterface.OnGenerateTexture _onGenerateTexture = null!;
+        private Native.RenderInterface.OnReleaseTexture _onReleaseTexture = null!;
+        private Native.RenderInterface.OnEnableScissorRegion _onEnableScissorRegion = null!;
+        private Native.RenderInterface.OnSetScissorRegion _onSetScissorRegion = null!;
+        private Native.RenderInterface.OnSetTransform _onSetTransform = null!;
 
         internal static RenderInterface? Create(IntPtr nativePtr) {
             return GetOrCreateCache(nativePtr, ptr => new RenderInterface(ptr));

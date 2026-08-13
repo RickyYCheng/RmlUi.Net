@@ -27,7 +27,7 @@ namespace RmlUiNet
         {
             var strPtr = Native.ElementFormControlInput.GetValue(NativePtr);
             var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Marshal.FreeHGlobal(strPtr);
+            Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? "";
         }
 

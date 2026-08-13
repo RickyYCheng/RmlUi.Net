@@ -28,7 +28,7 @@ namespace RmlUiNet {
                 var elementType = Marshal.PtrToStringAnsi(
                     Native.Event.GetCurrentElement(NativePtr, out var elementPtr)
                 );
-
+                if (elementType is null) return null;
                 return Util.GetElementByTypeName(elementPtr, elementType);
             }
         }
@@ -41,7 +41,7 @@ namespace RmlUiNet {
                 var elementType = Marshal.PtrToStringAnsi(
                     Native.Event.GetTargetElement(NativePtr, out var elementPtr)
                 );
-
+                if (elementType is null) return null;
                 return Util.GetElementByTypeName(elementPtr, elementType);
             }
         }

@@ -12,6 +12,6 @@ namespace RmlUiNet.Native
         public static extern int GetId(IntPtr propertyDefinition);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_PropertyDefinition_GetValueString")]
-        public static extern string GetValueString(IntPtr propertyDefinition, IntPtr property, string defaultValue);
+        public static extern IntPtr GetValueString(IntPtr propertyDefinition, IntPtr property, string defaultValue);
     }
 }

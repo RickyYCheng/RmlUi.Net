@@ -22,26 +22,15 @@
     <RepositoryUrl>https://github.com/Chorizite/RmlUI.Net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <!-- Version is fixed and explicit: bump it here for each release (and in CHANGELOG.md).
+         Pack explicitly with 'dotnet pack' from the CI pipeline, which stages all native
+         artifacts first. -->
+    <VersionPrefix>1.1.0</VersionPrefix>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
     <GenerateAssemblyInformationalVersionAttribute>true</GenerateAssemblyInformationalVersionAttribute>
     <GenerateAssemblyVersionAttribute>true</GenerateAssemblyVersionAttribute>
-    <UpdateAssemblyInfo>false</UpdateAssemblyInfo>
-    <UseProjectNamespaceForGitVersionInformation>true</UseProjectNamespaceForGitVersionInformation>
   </PropertyGroup>
-
-  <Target Name="VSGitVersion" BeforeTargets="PreBuildEvent" Condition="$(MSBuildRuntimeType)=='Full'">
-    <Message Text="Delete $(NuGetPackageRoot)$(PackageId)" Importance="high" />
-    <RemoveDir Directories="$(NuGetPackageRoot)$(PackageId)" />
-    <Exec Command="$(NuGetPackageRoot)\gitversion.msbuild\6.1.0\tools\net8.0\gitversion.exe -showvariable SemVer" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-      <Output TaskParameter="ConsoleOutput" PropertyName="PackageVersion" />
-    </Exec>
-    <Exec Command="$(NuGetPackageRoot)\gitversion.msbuild\6.1.0\tools\net8.0\gitversion.exe -showvariable Major" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="AssemblyVersion" />
-    </Exec>
-    <RemoveDir Directories="$(NuGetPackageRoot)\$(PackageId).$(Version)" ContinueOnError="true" />
-  </Target>
 
   <PropertyGroup>
     <NoWarn>1701;1702;CS1591</NoWarn>
@@ -52,23 +41,38 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <None Update="runtimes\win-x64\native\RmlUiNative.dll">
+    <!-- Native artifacts per RID. The Condition keeps plain 'dotnet build' working when
+         some platform artifacts have not been staged yet; the pack-time validation target
+         below guarantees a published package always contains all four platforms. -->
+    <Content Include="runtimes\win-x64\native\RmlUiNative.dll" Condition="Exists('runtimes\win-x64\native\RmlUiNative.dll')">
       <Pack>True</Pack>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <PackagePath>runtimes\win-x64\native\RmlUiNative.dll</PackagePath>
-    </None>
-    <None Update="runtimes\win-x86\native\RmlUiNative.dll">
+    </Content>
+    <Content Include="runtimes\win-x86\native\RmlUiNative.dll" Condition="Exists('runtimes\win-x86\native\RmlUiNative.dll')">
       <Pack>True</Pack>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <PackagePath>runtimes\win-x86\native\RmlUiNative.dll</PackagePath>
-    </None>
+    </Content>
+    <Content Include="runtimes\linux-x64\native\libRmlUiNative.so" Condition="Exists('runtimes\linux-x64\native\libRmlUiNative.so')">
+      <Pack>True</Pack>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <PackagePath>runtimes\linux-x64\native\libRmlUiNative.so</PackagePath>
+    </Content>
+    <Content Include="runtimes\osx-x64\native\RmlUiNative.dylib" Condition="Exists('runtimes\osx-x64\native\RmlUiNative.dylib')">
+      <Pack>True</Pack>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <PackagePath>runtimes\osx-x64\native\RmlUiNative.dylib</PackagePath>
+    </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="GitVersion.MsBuild" Version="6.1.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+  <!-- Pack-time guard: a package must never be published without all four native artifacts.
+       Set -p:SkipRuntimeArtifactValidation=true to pack a partial package locally; CI never does. -->
+  <Target Name="ValidateRuntimeArtifacts" BeforeTargets="GenerateNuspec" Condition="'$(SkipRuntimeArtifactValidation)' != 'true'">
+    <Error Condition="!Exists('runtimes\win-x64\native\RmlUiNative.dll')" Text="Missing native artifact: runtimes\win-x64\native\RmlUiNative.dll" />
+    <Error Condition="!Exists('runtimes\win-x86\native\RmlUiNative.dll')" Text="Missing native artifact: runtimes\win-x86\native\RmlUiNative.dll" />
+    <Error Condition="!Exists('runtimes\linux-x64\native\libRmlUiNative.so')" Text="Missing native artifact: runtimes\linux-x64\native\libRmlUiNative.so" />
+    <Error Condition="!Exists('runtimes\osx-x64\native\RmlUiNative.dylib')" Text="Missing native artifact: runtimes\osx-x64\native\RmlUiNative.dylib" />
+  </Target>
 
 </Project>

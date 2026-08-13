@@ -41,13 +41,11 @@ namespace RmlUiNet {
         private int OnSize(IntPtr ptr)
         {
             return Size(ptr);
-            return 0;
         }
 
         private IntPtr OnChild(IntPtr ptr, string name, int index)
         {
             return Child(ptr, name, index).NativePtr;
-            return IntPtr.Zero;
         }
 
         public abstract DataVariable Child(IntPtr ptr, string name, int index);

@@ -49,7 +49,7 @@ namespace RmlUiNet.Native
                 {
                     // Read pointer to each string
                     IntPtr stringPtr = Marshal.ReadIntPtr(keysPtr, IntPtr.Size * i);
-                    keys[i] = Marshal.PtrToStringAnsi(stringPtr);
+                    keys[i] = Marshal.PtrToStringAnsi(stringPtr) ?? string.Empty;
                 }
 
                 return keys;

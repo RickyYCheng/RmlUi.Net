@@ -53,6 +53,9 @@ namespace RmlUiNet.Native
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_FreeString")]
         public static extern void FreeString(IntPtr str);
 
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_String_Free")]
+        public static extern void FreeStringBuffer(IntPtr str);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RegisterEventType")]
         public static extern EventId RegisterEventType(string type, bool interruptible, bool bubbles, DefaultActionPhase default_action_phase);
 

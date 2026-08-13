@@ -20,7 +20,7 @@ namespace RmlUiNet {
         /// check if this method is implemented by the inheriting class
         /// </summary>
         private bool IsImplemented(string methodName) {
-            return GetType().GetMethod(methodName).DeclaringType != typeof(ElementCustom);
+            return GetType().GetMethod(methodName)?.DeclaringType != typeof(ElementCustom);
         }
 
         public override void Dispose() {

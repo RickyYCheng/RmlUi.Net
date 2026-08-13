@@ -21,7 +21,7 @@ namespace RmlUiNet
         /// <summary>
         /// Gets the document this element belongs to.
         /// </summary>
-        public ElementDocument OwnerDocument { get; }
+        public ElementDocument? OwnerDocument { get; }
 
         /// <summary>
         /// Adds an event listener to this element.
@@ -69,17 +69,17 @@ namespace RmlUiNet
         public void Click();
 
         /// <summary>
-        /// The distance from this element’s top border to its offset parent’s top border.
+        /// The distance from this elementï¿½s top border to its offset parentï¿½s top border.
         /// </summary>
         float GetOffsetTop();
 
         /// <summary>
-        /// The distance from the context’s left edge and the element’s left border.
+        /// The distance from the contextï¿½s left edge and the elementï¿½s left border.
         /// </summary>
         float GetAbsoluteLeft();
 
         /// <summary>
-        /// The distance from the context’s top edge and the element’s top border.
+        /// The distance from the contextï¿½s top edge and the elementï¿½s top border.
         /// </summary>
         float GetAbsoluteTop();
 
@@ -128,10 +128,10 @@ namespace RmlUiNet
     public abstract class Element<T> : RmlBase<T>, Element
         where T : class
     {
-        private ElementEventListener _listener;
+        private ElementEventListener? _listener;
         #region Properties
 
-        public string TagName => Marshal.PtrToStringAnsi(Native.Element.GetTagName(NativePtr));
+        public string TagName => Marshal.PtrToStringAnsi(Native.Element.GetTagName(NativePtr)) ?? string.Empty;
 
         /// <summary>
         /// Gets the document this element belongs to.
@@ -168,6 +168,11 @@ namespace RmlUiNet
         public override bool Equals(object? obj)
         {
             return obj is Element el && el.GetInnerRml() == GetInnerRml();
+        }
+
+        public override int GetHashCode()
+        {
+            return GetInnerRml().GetHashCode();
         }
 
         /// <summary>
@@ -238,7 +243,6 @@ namespace RmlUiNet
                     _owningElement.RemoveEventListener(evtName.ToLower(), this);
                 }
                 _handlers.Clear();
-                _handlers = null;
                 base.Dispose();
             }
         }
@@ -345,6 +349,7 @@ namespace RmlUiNet
             var nativeElement = Native.Element.AppendChild(NativePtr, child.NativePtr, addToDom);
             var typePtr = Native.Element.GetElementTypeName(nativeElement);
             var elementType = Marshal.PtrToStringAnsi(typePtr);
+            if (elementType is null) throw new Exception("Failed to get element type name for appended child");
             return Util.GetOrThrowElementByTypeName(nativeElement, elementType);
         }
 
@@ -360,6 +365,7 @@ namespace RmlUiNet
             var nativeElement = Native.Element.AppendChildTag(NativePtr, tagName, addToDom);
             var typePtr = Native.Element.GetElementTypeName(nativeElement);
             var elementType = Marshal.PtrToStringAnsi(typePtr);
+            if (elementType is null) throw new Exception("Failed to get element type name for appended child");
             return Util.GetOrThrowElementByTypeName(nativeElement, elementType);
         }
 
@@ -396,7 +402,7 @@ namespace RmlUiNet
         {
             var strPtr = Native.Element.GetInnerRml(NativePtr);
             var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Marshal.FreeHGlobal(strPtr);
+            Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? "";
         }
 
@@ -474,18 +480,18 @@ namespace RmlUiNet
             if (strPtr == IntPtr.Zero) return "";
 
             var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Marshal.FreeHGlobal(strPtr);
+            Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? "";
         }
 
         public void SetProperty(string propertyName, string value)
         {
             if (string.IsNullOrEmpty(propertyName)) throw new ArgumentNullException("propertyName");
-            if (string.IsNullOrEmpty(value)) throw new ArgumentNullException("value");
+            if (value == null) throw new ArgumentNullException("value");
             Native.Element.SetProperty(NativePtr, propertyName, value);
         }
 
-        /// <inheritdoc cref="Element.GetAttributeString(string, string)"/>
+        /// <inheritdoc cref="Element.GetAttribute(string)"/>
         public string GetAttribute(string attributeName)
         {
             if (string.IsNullOrEmpty(attributeName)) throw new ArgumentNullException("attributeName");
@@ -493,14 +499,14 @@ namespace RmlUiNet
             if (strPtr == IntPtr.Zero) return "";
 
             var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Marshal.FreeHGlobal(strPtr);
+            Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? "";
         }
 
         public void SetAttribute(string attributeName, string value)
         {
             if (string.IsNullOrEmpty(attributeName)) throw new ArgumentNullException("attributeName");
-            if (string.IsNullOrEmpty(value)) throw new ArgumentNullException("value");
+            if (value == null) throw new ArgumentNullException("value");
             Native.Element.SetAttributeString(NativePtr, attributeName, value);
         }
 
@@ -512,7 +518,7 @@ namespace RmlUiNet
 
             if (null == elementType)
             {
-                return null;
+                return null!;
             }
 
             return Util.GetOrThrowElementByTypeName(elementPtr, elementType);

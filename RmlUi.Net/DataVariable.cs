@@ -9,7 +9,7 @@ using static RmlUiNet.Native.SystemInterface;
 
 namespace RmlUiNet {
     public unsafe class DataVariable : RmlBase<DataVariable>, IDisposable {
-        public VariableDefinition Definition { get; protected set; }
+        public VariableDefinition Definition { get; protected set; } = null!;
 
         public DataVariable() : base(IntPtr.Zero) {
         }

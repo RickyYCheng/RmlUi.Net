@@ -84,7 +84,7 @@ namespace RmlUiNet
         {
             var strPtr = Native.ElementDocument.GetTitle(NativePtr);
             var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Marshal.FreeHGlobal(strPtr);
+            Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? "";
         }
 
@@ -92,7 +92,7 @@ namespace RmlUiNet
         {
             var strPtr = Native.ElementDocument.GetSourceURL(NativePtr);
             var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Marshal.FreeHGlobal(strPtr);
+            Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? "";
         }
 

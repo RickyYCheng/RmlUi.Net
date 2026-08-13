@@ -64,7 +64,7 @@ namespace RmlUiNet
         }
 
         public static RenderInterface GetRenderInterface() {
-            return RenderInterface.Create(Native.Rml.GetRenderInterface());
+            return RenderInterface.Create(Native.Rml.GetRenderInterface()) ?? throw new Exception("Failed to create render interface wrapper");
         }
     }
 }
