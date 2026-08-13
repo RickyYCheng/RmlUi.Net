@@ -23,10 +23,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # the Homebrew builds are arm64-only and cannot satisfy the x86_64 slice of our
 # universal binary. zlib is kept (the SDK's libz is universal) for compressed
 # fonts; freetype falls back to its bundled zlib when no system zlib exists.
-set(FT_DISABLE_PNG ON)
-set(FT_DISABLE_HARFBUZZ ON)
-set(FT_DISABLE_BROTLI ON)
-set(FT_DISABLE_BZIP2 ON)
+# The options must be seeded as CACHE variables with FORCE: freetype's own
+# cmake_minimum_required predates CMake 3.13, so policy CMP0077 is OLD there
+# and its option() calls wipe plain normal variables.
+set(FT_DISABLE_PNG ON CACHE BOOL "Disable PNG support" FORCE)
+set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable HarfBuzz" FORCE)
+set(FT_DISABLE_BROTLI ON CACHE BOOL "Disable Brotli" FORCE)
+set(FT_DISABLE_BZIP2 ON CACHE BOOL "Disable bzip2" FORCE)
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory("ext/freetype")
 
