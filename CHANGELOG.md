@@ -55,10 +55,11 @@ sources managées : 51 points d'entrée P/Invoke n'avaient pas d'export natif et
 
 ### Version de RmlUi embarquée
 
-- Le sous-module `RmlUi.Native/ext/RmlUi` est épinglé sur **RmlUi 6.0** (tag `6.0`).
-  La prémisse « version 4.x embarquée » du cahier des charges était obsolète : le
-  dépôt contenait déjà RmlUi 6.0 et l'essentiel des bindings était adapté. Aucune
-  mise à niveau de RmlUi n'a été effectuée.
+- Le sous-module `RmlUi.Native/ext/RmlUi` est épinglé sur **RmlUi 6.2** (tag `6.2`),
+  mis à niveau depuis 6.0. Les changements 6.1/6.2 sont additifs pour le binding
+  (entrées tactiles `ProcessTouch*`, surcharges `PropertyId` des animations,
+  `Element::Contains`, correctifs de stabilité) : aucun export n'a changé de
+  signature.
 - FreeType embarqué : 2.12.1 (sous-module), compilé depuis les sources pour toutes
   les plateformes.
 

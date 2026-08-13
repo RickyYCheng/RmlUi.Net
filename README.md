@@ -1,7 +1,7 @@
 # RmlUi.Net
 
 Bindings C# pour [RmlUi](https://github.com/mikke89/RmlUi), bibliothèque d'interface
-utilisateur native basée sur HTML/CSS. RmlUi embarqué : **6.0**.
+utilisateur native basée sur HTML/CSS. RmlUi embarqué : **6.2**.
 
 ## Structure
 
