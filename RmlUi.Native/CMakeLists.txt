@@ -18,6 +18,15 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # add external libraries
+# FreeType is vendored and linked statically into RmlUiNative. Disable its
+# optional system dependencies: on CI runners they may be absent, and on macOS
+# the Homebrew builds are arm64-only and cannot satisfy the x86_64 slice of our
+# universal binary. zlib is kept (the SDK's libz is universal) for compressed
+# fonts; freetype falls back to its bundled zlib when no system zlib exists.
+set(FT_DISABLE_PNG ON)
+set(FT_DISABLE_HARFBUZZ ON)
+set(FT_DISABLE_BROTLI ON)
+set(FT_DISABLE_BZIP2 ON)
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory("ext/freetype")
 
