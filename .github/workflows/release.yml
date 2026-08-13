@@ -15,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: native
     permissions: write-all
+    env:
+      # Optional: nuget.org API key for the RmlUi.Net package id (owned by the
+      # upstream Chorizite account). When absent, the nuget.org push step is
+      # skipped and the package is still published to GitHub Packages plus a
+      # GitHub release.
+      NUGET_ORG_KEY: ${{ secrets.NUGET_DEPLOY_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,14 +53,19 @@ jobs:
           path: artifacts/RmlUi.Net.*.nupkg
           if-no-files-found: error
 
-      - name: Push to NuGet (nuget.org and GitHub Packages)
+      - name: Push to GitHub Packages
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet nuget add source --username "${{ github.repository_owner }}" --password "$GH_PACKAGES_TOKEN" --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          dotnet nuget push artifacts/RmlUi.Net.*.nupkg --api-key "$GH_PACKAGES_TOKEN" --source github
+
+      - name: Push to nuget.org
+        if: env.NUGET_ORG_KEY != ''
         env:
           NUGET_ORG_KEY: ${{ secrets.NUGET_DEPLOY_KEY }}
-          GITHUB_NUGET_KEY: ${{ secrets.CI_NUGET_API_KEY }}
         run: |
-          dotnet nuget add source --username Chorizite --password "$GITHUB_NUGET_KEY" --store-password-in-clear-text --name github "https://nuget.pkg.github.com/Chorizite/index.json"
           dotnet nuget push artifacts/RmlUi.Net.*.nupkg --api-key "$NUGET_ORG_KEY" --source https://api.nuget.org/v3/index.json
-          dotnet nuget push artifacts/RmlUi.Net.*.nupkg --api-key "$GITHUB_NUGET_KEY" --source github
 
       - name: Create GitHub release
         env:
