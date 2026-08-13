@@ -43,7 +43,7 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: cmd
         run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Configure (Linux)

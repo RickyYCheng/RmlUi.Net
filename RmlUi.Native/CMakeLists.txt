@@ -10,13 +10,11 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 if(WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-    endif()
-elseif(LINUX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif()
+
+# RmlUi and freetype are built as static libraries and linked into the shared
+# RmlUiNative library: position-independent code is required on Linux/macOS.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # add external libraries
 set(BUILD_SHARED_LIBS OFF)
@@ -87,6 +85,7 @@ include_directories(${PROJECT_NAME}
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC "RMLUI_STATIC_LIB")
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
 target_link_libraries(${PROJECT_NAME}
     freetype

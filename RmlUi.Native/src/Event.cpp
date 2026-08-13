@@ -6,8 +6,11 @@ RMLUI_CAPI Rml::EventId rml_Event_GetId(Rml::Event *ev) {
     return ev->GetId();
 }
 
-RMLUI_CAPI const Rml::Dictionary& rml_Event_GetParameters(Rml::Event* ev) {
-    return ev->GetParameters();
+RMLUI_CAPI const Rml::Dictionary* rml_Event_GetParameters(Rml::Event* ev) {
+    // Return a pointer rather than a reference: returning a C++ class type from
+    // a C-linkage function trips Clang's -Wreturn-type-c-linkage. The ABI is
+    // identical (both pass a pointer), so the managed binding is unchanged.
+    return &ev->GetParameters();
 }
 
 RMLUI_CAPI Rml::EventPhase rml_Event_GetPhase(Rml::Event *ev) {
