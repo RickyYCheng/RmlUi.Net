@@ -1,4 +1,4 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core/RenderInterface.h"
 #include <iostream>
 #include <string>
@@ -63,7 +63,7 @@ public:
     }
 
     Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override {
-        return (*m_onCompileGeometry)(vertices.data(), vertices.size(), indices.data(), indices.size());
+        return (*m_onCompileGeometry)(vertices.data(), static_cast<int>(vertices.size()), indices.data(), static_cast<int>(indices.size()));
     }
 
     void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override {
@@ -79,7 +79,7 @@ public:
     }
 
     Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) override {
-        return (*m_onGenerateTexture)(source.data(), source.size(), source_dimensions);
+        return (*m_onGenerateTexture)(source.data(), static_cast<int>(source.size()), source_dimensions);
     }
 
     void ReleaseTexture(Rml::TextureHandle texture) override {
@@ -112,5 +112,6 @@ RMLUI_CAPI void *rml_RenderInterface_New(::onCompileGeometry onCompileGeometry,
 }
 
 RMLUI_CAPI void rml_RenderInterface_Test(Rml::RenderInterface* render) {
-    
+    // Diagnostic entry point used by the managed binding to verify the interface pointer.
+    (void)render;
 }

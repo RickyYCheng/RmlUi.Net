@@ -11,5 +11,5 @@ RMLUI_CAPI const char *rml_Dictionary_GetString(Rml::Dictionary *attributes, con
 		it->second.GetInto(result);
   }
 
-	return _strdup(result.c_str());
+	return RMLUI_DUP_STR(result.c_str());
 }

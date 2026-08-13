@@ -1,4 +1,4 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core.h"
 #include "RmlUi/Core/Types.h"
 #include "Util.h"
@@ -12,7 +12,7 @@ RMLUI_CAPI void rml_Dictionary_Free(Rml::Dictionary* dict) {
 }
 
 RMLUI_CAPI int rml_Dictionary_Size(Rml::Dictionary* dict) {
-  return dict->size();
+  return static_cast<int>(dict->size());
 }
 
 RMLUI_CAPI const char** rml_Dictionary_GetAllKeys(Rml::Dictionary* dict, int* outKeyCount) {
@@ -36,7 +36,7 @@ RMLUI_CAPI const char** rml_Dictionary_GetAllKeys(Rml::Dictionary* dict, int* ou
         size_t index = 0;
         for (const auto& item : *dict) {
             // Allocate and copy each key
-            keys[index] = strdup(item.first.c_str());
+            keys[index] = RMLUI_DUP_STR(item.first.c_str());
             
             // Optional: additional safety check
             if (keys[index] == nullptr) {

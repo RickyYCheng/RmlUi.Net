@@ -1,6 +1,8 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core.h"
+#include "ElementPool.h"
 #include "EventListener.h"
+#include <cstdlib>
 #include <string>
 
 static std::unordered_map<Rml::String*, Rml::String> dataModelPool;
@@ -10,6 +12,9 @@ RMLUI_CAPI bool rml_Initialise() {
 }
 
 RMLUI_CAPI void rml_Shutdown() {
+    // Release detached elements first: their release callbacks may call back into
+    // managed code and must run while both the managed side and RmlUi are alive.
+    RmlNative::ClearDetachedElements();
     Rml::Shutdown();
 }
 
@@ -73,4 +78,11 @@ RMLUI_CAPI void rml_UpdateString(std::string* str, const char* new_value) {
 
 RMLUI_CAPI void rml_FreeString(std::string* str) {
         dataModelPool.erase(str);
+}
+
+// Frees a string buffer previously returned by this library. String-returning
+// exports allocate with malloc (via strdup/_strdup); the managed side must not
+// free those buffers with a mismatched allocator.
+RMLUI_CAPI void rml_String_Free(char* str) {
+        free(str);
 }

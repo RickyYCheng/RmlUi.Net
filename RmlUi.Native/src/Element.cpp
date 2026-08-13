@@ -1,5 +1,6 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core/Element.h"
+#include "ElementPool.h"
 #include "Util.h"
 
 RMLUI_CAPI const char *rml_Element_GetTagName(Rml::Element *element) {
@@ -19,6 +20,13 @@ rml_Element_RemoveEventListener(Rml::Element *element, const char *event, Rml::E
 }
 
 RMLUI_CAPI const char *rml_Element_GetElementByID(Rml::Element *element, const char *id, Rml::Element **foundElement) {
+    if (foundElement != nullptr) {
+        *foundElement = nullptr;
+    }
+    if (element == nullptr || id == nullptr || foundElement == nullptr) {
+        return nullptr;
+    }
+
     *foundElement = element->GetElementById(id);
 
     if (*foundElement) {
@@ -65,7 +73,7 @@ RMLUI_CAPI const char *rml_Element_GetOwnerDocument(Rml::Element *element, Rml::
 }
 
 RMLUI_CAPI const char* rml_Element_GetInnerRml(Rml::Element *element) {
-    return strdup(element->GetInnerRML().c_str());
+    return RMLUI_DUP_STR(element->GetInnerRML().c_str());
 }
 
 RMLUI_CAPI void rml_Element_SetInnerRml(Rml::Element *element, const char* rml) {
@@ -101,7 +109,7 @@ RMLUI_CAPI void rml_Element_SetAttributeString(Rml::Element *element, const char
 }
 
 RMLUI_CAPI const char* rml_Element_GetAttributeString(Rml::Element *element, const char *attr, const char *default_value) {
-    return _strdup(element->GetAttribute<Rml::String>(attr, default_value).c_str());
+    return RMLUI_DUP_STR(element->GetAttribute<Rml::String>(attr, default_value).c_str());
 }
 
 RMLUI_CAPI void rml_Element_SetProperty(Rml::Element *element, const char *name, const char *value) {
@@ -117,7 +125,17 @@ RMLUI_CAPI const Rml::Property* rml_Element_GetPropertyById(Rml::Element *elemen
 }
 
 RMLUI_CAPI const char* rml_Element_GetPropertyString(Rml::Element *element, const char *name) {
-    return _strdup(element->GetProperty(name)->Get<Rml::String>().c_str());
+    if (element == nullptr || name == nullptr) {
+        return RMLUI_DUP_STR("");
+    }
+
+    const Rml::Property* property = element->GetProperty(name);
+    if (property == nullptr) {
+        return RMLUI_DUP_STR("");
+    }
+
+    // Property::ToString keeps the unit (e.g. "50px") unlike the raw variant string.
+    return RMLUI_DUP_STR(property->ToString().c_str());
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_GetChild(Rml::Element *element, int index) {
@@ -193,7 +211,22 @@ RMLUI_CAPI Rml::Element* rml_Element_GetParentNode(Rml::Element *element) {
 }
 
 RMLUI_CAPI void rml_Element_ReplaceChild(Rml::Element *element, Rml::Element *inserted_element, Rml::Element *replaced_element) {
-    element->ReplaceChild(inserted_element->GetParentNode()->RemoveChild(inserted_element), replaced_element);
+    if (element == nullptr || inserted_element == nullptr || replaced_element == nullptr) {
+        return;
+    }
+
+    // The inserted element is either a detached element created through the binding,
+    // or already part of a document tree. In both cases take ownership before use.
+    Rml::ElementPtr inserted = RmlNative::TakeDetachedElement(inserted_element);
+    if (!inserted) {
+        Rml::Element* parent = inserted_element->GetParentNode();
+        if (parent == nullptr) {
+            return;
+        }
+        inserted = parent->RemoveChild(inserted_element);
+    }
+
+    element->ReplaceChild(std::move(inserted), replaced_element);
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_GetPreviousSibling(Rml::Element *element) {
@@ -201,15 +234,20 @@ RMLUI_CAPI Rml::Element* rml_Element_GetPreviousSibling(Rml::Element *element) {
 }
 
 RMLUI_CAPI void rml_Element_RemoveChild(Rml::Element *element, Rml::Element *element_to_remove) {
-    element->RemoveChild(element_to_remove);
+    if (element == nullptr || element_to_remove == nullptr) {
+        return;
+    }
+
+    // RmlUi 6.0 transfers ownership of the removed element to the caller; keep it
+    // alive so the managed side can re-attach it later (rml_Element_AppendChild).
+    Rml::ElementPtr removed = element->RemoveChild(element_to_remove);
+    if (removed) {
+        RmlNative::StoreDetachedElement(std::move(removed));
+    }
 }
 
 RMLUI_CAPI float rml_Element_GetScrollHeight(Rml::Element *element) {
     return element->GetScrollHeight();
-}
-
-RMLUI_CAPI float rml_Element_GetScrollLeft(Rml::Element *element) {
-    return element->GetScrollLeft();
 }
 
 RMLUI_CAPI float rml_Element_GetScrollTop(Rml::Element *element) {
@@ -221,11 +259,35 @@ RMLUI_CAPI float rml_Element_GetScrollWidth(Rml::Element *element) {
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_AppendChild(Rml::Element *element, Rml::Element *element_to_append, bool add_to_dom) {
-    return element->AppendChild(element_to_append->GetParentNode()->RemoveChild(element_to_append), add_to_dom);
+    if (element == nullptr || element_to_append == nullptr) {
+        return nullptr;
+    }
+
+    // The appended element is either a detached element created through the binding,
+    // or already part of a document tree. In both cases take ownership before use.
+    Rml::ElementPtr appended = RmlNative::TakeDetachedElement(element_to_append);
+    if (!appended) {
+        Rml::Element* parent = element_to_append->GetParentNode();
+        if (parent == nullptr) {
+            return nullptr;
+        }
+        appended = parent->RemoveChild(element_to_append);
+    }
+
+    return element->AppendChild(std::move(appended), add_to_dom);
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_AppendChildTag(Rml::Element *element, const char* tagName, bool add_to_dom) {
-    return element->AppendChild(element->GetOwnerDocument()->CreateElement(tagName), add_to_dom);
+    if (element == nullptr || tagName == nullptr) {
+        return nullptr;
+    }
+
+    Rml::ElementDocument* document = element->GetOwnerDocument();
+    if (document == nullptr) {
+        return nullptr;
+    }
+
+    return element->AppendChild(document->CreateElement(tagName), add_to_dom);
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_Closest(Rml::Element *element, const char* selectors) {
@@ -233,6 +295,10 @@ RMLUI_CAPI Rml::Element* rml_Element_Closest(Rml::Element *element, const char* 
 }
 
 RMLUI_CAPI bool rml_Element_DispatchEvent(Rml::Element *element, const char* event_id, Rml::Dictionary& parameters, bool interruptible, bool bubbles) {
+    if (element == nullptr || event_id == nullptr) {
+        return false;
+    }
+
     return element->DispatchEvent(event_id, parameters, interruptible, bubbles);
 }
 
@@ -285,19 +351,25 @@ RMLUI_CAPI void rml_Element_RemoveAttribute(Rml::Element *element, const char* a
 }
 
 RMLUI_CAPI void rml_Element_SetInnerText(Rml::Element *element, const char* text) {
-    /*
-    const int num_children = element->GetNumChildren();
+    if (element == nullptr || text == nullptr) {
+        return;
+    }
 
-	for (int i = 0; i < num_children; i++)
-	{
-		Rml::Element* child = element->GetChild(i);
-		if (child->GetTagName() == "#text") {
-            child->GetParentNode()->RemoveChild(child);
+    // Remove any existing text nodes.
+    for (int i = element->GetNumChildren() - 1; i >= 0; --i) {
+        Rml::Element* child = element->GetChild(i);
+        if (child->GetTagName() == "#text") {
+            element->RemoveChild(child);
         }
     }
 
-    element->GetOwnerDocument()->CreateElement("#text");
-    */
+    // Append a new text node, if any text was provided.
+    Rml::ElementDocument* document = element->GetOwnerDocument();
+    if (document == nullptr) {
+        return;
+    }
+
+    element->AppendChild(document->CreateTextNode(text));
 }
 
 RMLUI_CAPI void rml_Element_ScrollIntoView(Rml::Element *element) {

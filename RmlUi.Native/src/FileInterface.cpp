@@ -1,4 +1,4 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core/FileInterface.h"
 #include <iostream>
 #include <string>
@@ -50,7 +50,7 @@ public:
 	}
 
 	size_t Read(void* buffer, size_t size, Rml::FileHandle file) override {
-		return (*m_onRead)((char*)buffer, size, file);
+		return (*m_onRead)((char*)buffer, static_cast<unsigned int>(size), file);
 	}
 
 	bool Seek(Rml::FileHandle file, long offset, int origin) override {

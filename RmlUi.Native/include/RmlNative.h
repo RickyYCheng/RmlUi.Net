@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 struct FakeStruct {
   public:
@@ -21,3 +21,12 @@ struct FakeStruct {
 #endif
 
 #define RMLUI_CAPI _RMLUI_EXTERN _RMLUI_EXPORT
+
+// Portable strdup: MSVC names it _strdup, POSIX platforms call it strdup.
+#include <cstring>
+#include <cstdlib>
+#if defined(_MSC_VER)
+#    define RMLUI_DUP_STR _strdup
+#else
+#    define RMLUI_DUP_STR strdup
+#endif

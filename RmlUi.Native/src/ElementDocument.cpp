@@ -1,8 +1,9 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core/ElementDocument.h"
 #include "RmlUi/Core/StyleSheet.h"
 #include "RmlUi/Core/StyleSheetContainer.h"
 #include "RmlUi/Core/StyleSheetTypes.h"
+#include "ElementPool.h"
 #include "Pool.h"
 
 RMLUI_CAPI void rml_ElementDocument_Show(Rml::ElementDocument* document, Rml::ModalFlag modal_flag = Rml::ModalFlag::None, Rml::FocusFlag focus_flag = Rml::FocusFlag::Auto) {
@@ -22,24 +23,47 @@ RMLUI_CAPI void rml_ElementDocument_SetTitle(Rml::ElementDocument* document, con
 }
 
 RMLUI_CAPI const char* rml_ElementDocument_GetTitle(Rml::ElementDocument* document) {
-    return strdup(document->GetTitle().c_str());
+    return RMLUI_DUP_STR(document->GetTitle().c_str());
 }
 
 RMLUI_CAPI const char* rml_ElementDocument_GetSourceURL(Rml::ElementDocument* document) {
-    return strdup(document->GetSourceURL().c_str());
+    return RMLUI_DUP_STR(document->GetSourceURL().c_str());
 }
 
-RMLUI_CAPI Rml::ElementPtr* rml_ElementDocument_CreateElement(Rml::ElementDocument* document, const char* name) {
-    return &document->CreateElement(name);
+RMLUI_CAPI Rml::Element* rml_ElementDocument_CreateElement(Rml::ElementDocument* document, const char* name) {
+    if (document == nullptr || name == nullptr) {
+        return nullptr;
+    }
+
+    return RmlNative::StoreDetachedElement(document->CreateElement(name));
 }
 
 RMLUI_CAPI Rml::Element* rml_ElementDocument_CreateTextNode(Rml::ElementDocument* document, const char* text) {
-    return document->CreateTextNode(text).get();
+    if (document == nullptr || text == nullptr) {
+        return nullptr;
+    }
+
+    return RmlNative::StoreDetachedElement(document->CreateTextNode(text));
 }
 
 RMLUI_CAPI void rml_ElementDocument_AddStyleSheetContainer(Rml::ElementDocument* document, Rml::StyleSheetContainer* container) {
-    auto sheet_container = document->GetStyleSheetContainer()->CombineStyleSheetContainer(*container);
-    document->SetStyleSheetContainer(sheet_container);
+    if (document == nullptr || container == nullptr) {
+        return;
+    }
+
+    // Merge the supplied container with the document's current one. The document owns the
+    // combined container; the caller keeps ownership of the one it passed in.
+    const Rml::StyleSheetContainer* current = document->GetStyleSheetContainer();
+    Rml::SharedPtr<Rml::StyleSheetContainer> combined;
+    if (current != nullptr) {
+        combined = current->CombineStyleSheetContainer(*container);
+    }
+    else {
+        Rml::StyleSheetContainer empty;
+        combined = empty.CombineStyleSheetContainer(*container);
+    }
+
+    document->SetStyleSheetContainer(combined);
 }
 
 RMLUI_CAPI void rml_ElementDocument_Close(Rml::ElementDocument* document) {

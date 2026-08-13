@@ -2,33 +2,44 @@ cmake_minimum_required(VERSION 3.14...3.23)
 
 project(RmlUiNative VERSION 1.0 LANGUAGES CXX)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+# Keep build artifacts inside the build tree so that multiple configurations
+# (x86/x64, Debug/Release) never overwrite each other.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-if(WIN32)    
-    set(CMAKE_EXE_LINKER_FLAGS "/SUBSYSTEM:WINDOWS /DEBUG:FASTLINK")
-    set(CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE "x64")
+if(WIN32)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
-
-        if (USE_STATIC_MSVC_RUNTIME_LIBRARY)
-		    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	    else()
-		    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-	    endif()
     endif()
 elseif(LINUX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -I. -Wall -Werror")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif()
 
 # add external libraries
-add_subdirectory("ext/freetype")
-set(FREETYPE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/Debug/freetyped.lib")
-set(FREETYPE_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/include")
-
 set(BUILD_SHARED_LIBS OFF)
+add_subdirectory("ext/freetype")
+
+# Expose the vendored freetype build to RmlUi's find_package(Freetype) call.
+if(NOT TARGET Freetype::Freetype)
+    add_library(Freetype::Freetype ALIAS freetype)
+endif()
+set(FREETYPE_INCLUDE_DIR_ft2build "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/include" CACHE PATH "Path to ft2build.h" FORCE)
+set(FREETYPE_INCLUDE_DIR_freetype2 "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/include" CACHE PATH "Path to freetype include dir" FORCE)
+if(MSVC)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/freetyped.lib" CACHE FILEPATH "Path to freetype library" FORCE)
+    else()
+        set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/freetype.lib" CACHE FILEPATH "Path to freetype library" FORCE)
+    endif()
+elseif(WIN32)
+    set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/freetype.lib" CACHE FILEPATH "Path to freetype library" FORCE)
+else()
+    set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/lib/libfreetype.a" CACHE FILEPATH "Path to freetype library" FORCE)
+endif()
+
 add_subdirectory("ext/RmlUi")
 
 add_library(${PROJECT_NAME} SHARED
@@ -53,8 +64,6 @@ add_library(${PROJECT_NAME} SHARED
     "src/EventListenerInstancer.cpp"
 
     "src/Box.cpp"
-    "src/RenderManager.cpp"
-
     "src/RenderInterface.cpp"
     "src/SystemInterface.cpp"
     "src/FileInterface.cpp"
@@ -84,3 +93,18 @@ target_link_libraries(${PROJECT_NAME}
     RmlUi::Core
     RmlUi::Debugger
 )
+
+# Keep the expected binary names for the .NET runtime on each platform:
+#   Windows: RmlUiNative.dll
+#   Linux:   libRmlUiNative.so
+#   macOS:   RmlUiNative.dylib
+if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
+endif()
+
+# Warnings as errors for the binding sources only (vendored libraries are built with their own settings).
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror)
+endif()

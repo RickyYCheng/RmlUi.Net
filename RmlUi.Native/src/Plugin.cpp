@@ -1,4 +1,4 @@
-#include "RmlNative.h"
+﻿#include "RmlNative.h"
 #include "RmlUi/Core/Plugin.h"
 #include "RmlUi/Core/ElementDocument.h"
 #include "RmlUi/Core/Context.h"
@@ -81,7 +81,8 @@ public:
     }
 
     void OnElementDestroy(Rml::Element* element) override {
-      //(*m_onElementDestroy)(element);
+      // Intentionally empty: the managed binding owns the element lifetime.
+      (void)element;
     }
 };
 
