@@ -1,97 +1,97 @@
 # Changelog
 
-Toutes les modifications notables de ce projet sont documentées ici.
+All notable changes to this project are documented in this file.
 
 ## 1.1.0 — 2026-08-13
 
-### Restauration des 51 exports natifs manquants (parité exports/imports : 100 %)
+### Restoration of the 51 missing native exports (100 % export/import parity)
 
-Le package 1.0.1 publiait un `RmlUiNative.dll` compilé depuis un commit antérieur aux
-sources managées : 51 points d'entrée P/Invoke n'avaient pas d'export natif et levaient
-`EntryPointNotFoundException` à l'exécution.
+Package 1.0.1 shipped an `RmlUiNative.dll` built from a commit that predated the
+managed sources: 51 P/Invoke entry points had no native export and threw
+`EntryPointNotFoundException` at run time.
 
-- 48 exports étaient déjà présents dans les sources natives de ce dépôt ; ils sont
-  désormais effectivement compilés dans la DLL publiée.
-- 3 exports étaient réellement absents du côté natif et ont été implémentés :
+- 48 exports already existed in this repository's native sources; they are now
+  actually compiled into the published DLL.
+- 3 exports were truly absent on the native side and have been implemented:
   - `rml_DataModelConstructor_BindStringArray`
   - `rml_DataModelConstructor_UnbindStringArray`
   - `rml_DataModelConstructor_RegisterStruct`
-- Nouvel export utilitaire `rml_String_Free` : les chaînes allouées côté natif
-  (`strdup`/`malloc`) sont maintenant libérées par l'allocateur correspondant au lieu
-  de `Marshal.FreeHGlobal` (allocateur incompatible, corruption de tas possible).
-- Résultat vérifié par l'outil de parité `tools/RmlUiExportParity` :
-  **174 entrées DllImport ↔ 205 exports natifs**, sur win-x64 et win-x86.
-  L'outil analyse les tables d'exports PE, ELF et Mach-O et échoue si une entrée
-  managée n'a pas d'export natif (étape bloquante de la CI).
+- New utility export `rml_String_Free`: strings allocated on the native side
+  (`strdup`/`malloc`) are now freed with the matching allocator instead of
+  `Marshal.FreeHGlobal` (incompatible allocator, potential heap corruption).
+- Verified by the `tools/RmlUiExportParity` checker: **174 DllImport entries ↔
+  205 native exports**, on win-x64 and win-x86. The tool parses PE, ELF and
+  Mach-O export tables and fails when a managed entry point has no native
+  export (blocking CI step).
 
-### Correction de la gestion des chaînes vides
+### Empty string handling fix
 
-- `Element.SetAttribute` et `Element.SetProperty` acceptent désormais une valeur vide
-  (`""`), qui est une valeur légitime ; ils lèvent toujours `ArgumentNullException`
-  pour `null`.
+- `Element.SetAttribute` and `Element.SetProperty` now accept an empty string
+  (`""`), which is a legal value; they still throw `ArgumentNullException` for
+  `null`.
 
-### Correctifs de robustesse du binding natif
+### Native binding robustness fixes
 
-- `rml_ElementDocument_CreateElement` / `CreateTextNode` ne renvoient plus l'adresse
-  d'un temporaire (`ElementPtr`) : les éléments détachés sont conservés dans un pool
-  jusqu'à leur rattachement (`rml_Element_AppendChild`, `rml_Element_ReplaceChild`).
-- `rml_Element_RemoveChild` conserve la propriété rendue par RmlUi 6.0 (`ElementPtr`)
-  afin qu'un enfant retiré puisse être ré-attaché sans être détruit.
-- `rml_Element_SetInnerText` est réellement implémenté (suppression des nœuds texte
-  existants + ajout du nouveau nœud).
-- `rml_ElementDocument_AddStyleSheetContainer` ne crashe plus lorsque le document n'a
-  pas encore de conteneur de feuilles de style.
-- `rml_Shutdown` libère les éléments détachés restants avant `Rml::Shutdown`, afin que
-  les callbacks managés des instanciers s'exécutent pendant que le côté managé est
-  encore vivant (plus de crash au déchargement du processus).
-- Gardes de pointeurs nuls ajoutées sur les exports propriétés/dictionnaire/éléments :
-  plus de déréférencement silencieux de pointeur nul.
-- `rml_Property_GetString` et `rml_Element_GetPropertyString` renvoient la valeur avec
-  son unité (`"50px"` et non `"50"`) via `Property::ToString()`.
-- Toutes les chaînes natives utilisent l'allocateur portable `RMLUI_DUP_STR`
-  (`_strdup` sous MSVC, `strdup` ailleurs) : le code natif compile sous GCC/Clang.
-- Compilation native avec `/W4 /WX` (MSVC) et `-Wall -Wextra -Werror` (GCC/Clang) :
-  zéro avertissement.
+- `rml_ElementDocument_CreateElement` / `CreateTextNode` no longer return the
+  address of a temporary (`ElementPtr`): detached elements are pooled until
+  they are attached (`rml_Element_AppendChild`, `rml_Element_ReplaceChild`).
+- `rml_Element_RemoveChild` keeps the ownership returned by RmlUi 6.0
+  (`ElementPtr`) so a removed child can be re-attached without being destroyed.
+- `rml_Element_SetInnerText` is actually implemented (removes existing text
+  nodes and appends the new one).
+- `rml_ElementDocument_AddStyleSheetContainer` no longer crashes when the
+  document has no style sheet container yet.
+- `rml_Shutdown` releases remaining detached elements before `Rml::Shutdown`,
+  so instancer callbacks run while the managed side is still alive (no more
+  crash at process teardown).
+- Null pointer guards added to the property/dictionary/element exports: no
+  more silent null dereferences.
+- `rml_Property_GetString` and `rml_Element_GetPropertyString` return the value
+  with its unit (`"50px"` instead of `"50"`) via `Property::ToString()`.
+- All native strings use the portable `RMLUI_DUP_STR` allocator helper
+  (`_strdup` on MSVC, `strdup` elsewhere): the native code compiles with
+  GCC/Clang.
+- Native builds use `/W4 /WX` (MSVC) and `-Wall -Wextra -Werror` (GCC/Clang):
+  zero warnings.
 
-### Version de RmlUi embarquée
+### Embedded RmlUi version
 
-- Le sous-module `RmlUi.Native/ext/RmlUi` est épinglé sur **RmlUi 6.2** (tag `6.2`),
-  mis à niveau depuis 6.0. Les changements 6.1/6.2 sont additifs pour le binding
-  (entrées tactiles `ProcessTouch*`, surcharges `PropertyId` des animations,
-  `Element::Contains`, correctifs de stabilité) : aucun export n'a changé de
-  signature.
-- FreeType embarqué : 2.12.1 (sous-module), compilé depuis les sources pour toutes
-  les plateformes.
+- The `RmlUi.Native/ext/RmlUi` submodule is pinned to **RmlUi 6.2** (tag `6.2`),
+  upgraded from 6.0. The 6.1/6.2 changes are additive for the binding
+  (`ProcessTouch*` touch input, `PropertyId` animation overloads,
+  `Element::Contains`, stability fixes): no export signature changed.
+- Embedded FreeType: 2.12.1 (submodule), built from source on every platform.
 
-### Plateformes et packaging
+### Platforms and packaging
 
-- Artefacts natifs : `win-x64`, `win-x86`, `linux-x64` (`libRmlUiNative.so`),
-  `osx-x64` (binaire universel arm64+x86_64 : `RmlUiNative.dylib`).
-- Le `.nupkg` contient les quatre RID dans `runtimes/<rid>/native/`.
-- Garde-fou de packaging : `dotnet pack` échoue si l'un des quatre artefacts natifs
-  est manquant (cible MSBuild `ValidateRuntimeArtifacts`).
-- Version explicite dans le `.csproj` (`VersionPrefix`), GitVersion retiré : les
-  versions sont fixées à la main, reproductibles localement.
+- Native artifacts: `win-x64`, `win-x86`, `linux-x64` (`libRmlUiNative.so`),
+  `osx-x64` (universal arm64+x86_64 binary: `RmlUiNative.dylib`).
+- The `.nupkg` ships all four RIDs under `runtimes/<rid>/native/`.
+- Packaging guard: `dotnet pack` fails if any of the four native artifacts is
+  missing (`ValidateRuntimeArtifacts` MSBuild target).
+- Explicit version in the `.csproj` (`VersionPrefix`), GitVersion removed:
+  versions are set by hand and reproducible locally.
 
-### CI et tests
+### CI and tests
 
-- Pipeline GitHub Actions :
-  - build natif + parité exports/imports sur chaque plateforme (`native-build.yml`) ;
-  - tests de fumée sur Windows/Linux/macOS (`ci.yml`) ;
-  - packaging avec vérification des quatre artefacts (`ci.yml`, `release.yml`).
-- Suite de tests de fumée `tests/RmlUi.Net.SmokeTests` : 22 tests exerçant toutes les
-  API publiques, dont les 51 exports restaurés ; une fenêtre Win32 masquée est créée
-  avec `--window` sur Windows.
+- GitHub Actions pipeline:
+  - native build + blocking export/import parity on every platform
+    (`native-build.yml`);
+  - smoke tests on Windows/Linux/macOS (`ci.yml`);
+  - packaging with all four artifacts verified (`ci.yml`, `release.yml`).
+- `tests/RmlUi.Net.SmokeTests` suite: 22 tests exercising every public API,
+  including all 51 restored exports; a hidden Win32 window is created with
+  `--window` on Windows.
 
-### Compatibilité de l'API managée
+### Managed API compatibility
 
-- Aucun type, méthode ou énumération publique n'a été supprimé ni renommé.
-- Annotations de nullabilité corrigées (ex. `Element.OwnerDocument` renvoie
-  `ElementDocument?`) : impact limité aux métadonnées, pas au code consommateur.
-- `InternalsVisibleTo("RmlUi.Net.SmokeTests")` ajouté pour permettre aux tests de
-  couvrir les wrappers P/Invoke internes.
+- No public type, method or enum was removed or renamed.
+- Nullability annotations fixed (e.g. `Element.OwnerDocument` returns
+  `ElementDocument?`): metadata-only impact, no consumer code changes.
+- `InternalsVisibleTo("RmlUi.Net.SmokeTests")` added so tests can cover the
+  internal P/Invoke wrappers.
 
 ## 1.0.1 — 2025-02-28
 
-- Version initiale publiée (désynchronisée entre DLL managé et DLL natif : 51
-  entrées P/Invoke sans export natif — corrigé en 1.1.0).
+- Initial published release (managed and native DLLs out of sync: 51 P/Invoke
+  entry points without a native export — fixed in 1.1.0).
