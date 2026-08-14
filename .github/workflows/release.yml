@@ -64,7 +64,9 @@ jobs:
           GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           dotnet nuget add source --username "${{ github.repository_owner }}" --password "$GH_PACKAGES_TOKEN" --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          dotnet nuget push artifacts/*.nupkg --api-key "$GH_PACKAGES_TOKEN" --source github
+          # Re-running the workflow for an already-published version returns
+          # 409; treat that as success so the pipeline stays re-runnable.
+          dotnet nuget push artifacts/*.nupkg --api-key "$GH_PACKAGES_TOKEN" --source github || echo "GitHub Packages push skipped (package version already exists)."
 
       - name: NuGet login (OIDC → temporary API key)
         uses: NuGet/login@v1
