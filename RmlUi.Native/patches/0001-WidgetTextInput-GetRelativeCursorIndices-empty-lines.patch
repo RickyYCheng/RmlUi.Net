@@ -1,0 +1,40 @@
+From 5d73e98a5194d78d30332ec5e020e2da08eb2983 Mon Sep 17 00:00:00 2001
+From: Djoe_ <43145127+PourrezJ@users.noreply.github.com>
+Date: Fri, 14 Aug 2026 09:45:20 +0200
+Subject: [PATCH] Fix out-of-bounds read in
+ WidgetTextInput::GetRelativeCursorIndices when lines are empty
+
+When the widget has not been formatted yet (no layout, or no font face
+available) 'lines' is empty. The fallback then computed
+out_cursor_line_index = -1 and dereferenced lines[-1], which crashes on
+32-bit builds and reads garbage on 64-bit builds. This can be triggered by
+sending key events (e.g. backspace) to a focused text input before its
+first layout.
+---
+ Source/Core/Elements/WidgetTextInput.cpp | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/Source/Core/Elements/WidgetTextInput.cpp b/Source/Core/Elements/WidgetTextInput.cpp
+index dcc835fc..fbecf58f 100644
+--- a/Source/Core/Elements/WidgetTextInput.cpp
++++ b/Source/Core/Elements/WidgetTextInput.cpp
+@@ -986,6 +986,16 @@ void WidgetTextInput::GetRelativeCursorIndices(int& out_cursor_line_index, int&
+ {
+ 	int line_begin = 0;
+ 
++	// The lines have not been generated yet, e.g. before the first layout or when no font face is
++	// available. Place the cursor at the very beginning of the text field and bail out; the
++	// fallback below would otherwise read from lines[-1].
++	if (lines.empty())
++	{
++		out_cursor_line_index = 0;
++		out_cursor_character_index = 0;
++		return;
++	}
++
+ 	for (size_t i = 0; i < lines.size(); i++)
+ 	{
+ 		const int cursor_relative_line_end = absolute_cursor_index - (line_begin + lines[i].editable_length);
+-- 
+2.47.1.windows.1
+

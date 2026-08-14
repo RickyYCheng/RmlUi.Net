@@ -51,6 +51,39 @@ else()
     set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/libfreetype.a" CACHE FILEPATH "Path to freetype library" FORCE)
 endif()
 
+# The vendored RmlUi submodule is kept pristine at the official tag 6.2. Fork
+# fixes live as git patches in patches/ and are applied on top at configure
+# time. Each patch is guarded by a reverse-check so repeated configures and
+# already-patched trees stay no-ops.
+find_package(Git REQUIRED)
+
+function(apply_rmlui_patch patch_file)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" apply --check --reverse "${patch_file}"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/RmlUi"
+        RESULT_VARIABLE patch_already_applied
+        OUTPUT_QUIET ERROR_QUIET
+    )
+    if(NOT patch_already_applied EQUAL 0)
+        execute_process(
+            COMMAND "${GIT_EXECUTABLE}" apply "${patch_file}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/RmlUi"
+            RESULT_VARIABLE patch_result
+            OUTPUT_VARIABLE patch_output ERROR_VARIABLE patch_error
+        )
+        if(NOT patch_result EQUAL 0)
+            message(FATAL_ERROR "Failed to apply RmlUi patch ${patch_file}:\n${patch_output}${patch_error}")
+        endif()
+        message(STATUS "Applied RmlUi patch: ${patch_file}")
+    endif()
+endfunction()
+
+file(GLOB RMLUI_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/*.patch")
+list(SORT RMLUI_PATCHES)
+foreach(rmlui_patch IN LISTS RMLUI_PATCHES)
+    apply_rmlui_patch("${rmlui_patch}")
+endforeach()
+
 add_subdirectory("ext/RmlUi")
 
 add_library(${PROJECT_NAME} SHARED

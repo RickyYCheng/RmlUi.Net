@@ -9,9 +9,11 @@ All notable changes to this project are documented in this file.
 - The vendored RmlUi (tag 6.2) crashed or read garbage when key events reached a
   focused `<input type="text">` before its lines were formatted (no layout yet,
   or no font face available): `WidgetTextInput::GetRelativeCursorIndices`
-  indexed `lines[-1]` on an empty line list. Patched in the vendored RmlUi
-  (`fork-6.2-fixes` branch on top of tag 6.2): the cursor now maps to the start
-  of the field when there are no lines. This is what made
+  indexed `lines[-1]` on an empty line list. The fix is shipped as a git patch
+  (`RmlUi.Native/patches/0001-WidgetTextInput-GetRelativeCursorIndices-empty-lines.patch`)
+  applied by CMake at configure time, keeping the submodule pristine at the
+  official tag 6.2: the cursor now maps to the start of the field when there
+  are no lines. This is what made
   `Context.ProcessKeyDown(Input::KI_BACK, 0)` fail (or crash on 32-bit builds)
   while text input and arrow keys kept working.
 - All P/Invoke declarations returning a native C++ `bool` now marshal the
