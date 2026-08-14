@@ -91,6 +91,7 @@ namespace RmlUi.Net.SmokeTests
                 if (++executed <= limit || limit <= 0) Run("Element tree manipulation", TestElementTree);
                 if (++executed <= limit || limit <= 0) Run("Attributes + properties (incl. empty strings)", TestAttributesAndProperties);
                 if (++executed <= limit || limit <= 0) Run("Form controls", TestFormControls);
+                if (++executed <= limit || limit <= 0) Run("Input backspace deletion", TestInputBackspace);
                 if (++executed <= limit || limit <= 0) Run("Event dispatch + listeners + parameters", TestEvents);
                 if (++executed <= limit || limit <= 0) Run("Data model scalars", TestDataModelScalars);
                 if (++executed <= limit || limit <= 0) Run("Data model string array + struct", TestDataModelStringArrayAndStruct);
@@ -633,6 +634,42 @@ namespace RmlUi.Net.SmokeTests
             AssertEqual("hello", input.GetValue(), "input initial value");
             input.SetValue("world");
             AssertEqual("world", input.GetValue(), "input value after SetValue");
+        }
+
+        private static void TestInputBackspace()
+        {
+            // Minimal repro: focused <input type="text">, ProcessTextInput("ab"),
+            // then ProcessKeyDown(KI_BACK, 0) must leave the value "a".
+            const string rml = "<rml><body><input id=\"i\" type=\"text\"/></body></rml>";
+            ElementDocument doc = _context!.LoadDocumentFromMemory(rml, "input.rml")
+                ?? throw new Exception("LoadDocumentFromMemory returned null");
+            try
+            {
+                doc.Show();
+                _context.Update();
+
+                ElementFormControlInput input = doc.GetElementById("i") as ElementFormControlInput
+                    ?? throw new Exception("input#i not found");
+                Assert(input.Focus(), "input Focus() returned false");
+                Assert(_context.GetFocusElement() == input, "GetFocusElement is not the input");
+
+                Assert(!_context.ProcessTextInput("ab"), "ProcessTextInput(\"ab\") was not consumed");
+                AssertEqual("ab", input.GetValue(), "value after ProcessTextInput(\"ab\")");
+
+                Assert(!_context.ProcessKeyDown(KeyIdentifier.KI_BACK, KeyModifier.None), "KI_BACK was not consumed");
+                AssertEqual("a", input.GetValue(), "value after ProcessKeyDown(KI_BACK)");
+
+                // Cursor is at the end: Delete is a no-op, backspace removes the last character.
+                Assert(!_context.ProcessKeyDown(KeyIdentifier.KI_DELETE, KeyModifier.None), "KI_DELETE was not consumed");
+                AssertEqual("a", input.GetValue(), "value after Delete at end of text");
+
+                Assert(!_context.ProcessKeyDown(KeyIdentifier.KI_BACK, KeyModifier.None), "second KI_BACK was not consumed");
+                AssertEqual("", input.GetValue(), "value after second KI_BACK");
+            }
+            finally
+            {
+                doc.Close();
+            }
         }
 
         private static void TestEvents()

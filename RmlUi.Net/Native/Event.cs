@@ -25,12 +25,15 @@ namespace RmlUiNet.Native
         public static extern void StopImmediatePropagation(IntPtr ev);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_IsInterruptible")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IsInterruptible(IntPtr ev);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_IsPropagating")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IsPropagating(IntPtr ev);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_IsImmediatePropagating")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IsImmediatePropagating(IntPtr ev);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_GetParameters")]

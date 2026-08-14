@@ -45,6 +45,7 @@ namespace RmlUiNet.Native {
         public static extern float GetAsFloat(IntPtr variant, float defaultValue);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_GetAsBool")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool GetAsBool(IntPtr variant, bool defaultValue);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_Free")]

@@ -17,6 +17,7 @@ namespace RmlUiNet.Native
         public static extern void Shutdown();
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Debugger_IsVisible")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IsVisible();
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Debugger_SetVisible")]

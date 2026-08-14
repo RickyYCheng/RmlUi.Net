@@ -27,6 +27,7 @@ namespace RmlUiNet.Native
         public static extern IntPtr GetInnerRml(IntPtr element);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Element_Focus")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool Focus(IntPtr element);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Element_Blur")]
@@ -99,15 +100,18 @@ namespace RmlUiNet.Native
         public static extern IntPtr QuerySelector(IntPtr element, string selector);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Element_HasClass")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool HasClass(IntPtr element, string className);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Element_HasAttribute")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool HasAttribute(IntPtr element, string attributeName);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Element_RemoveAttribute")]
         public static extern void RemoveAttribute(IntPtr element, string attributeName);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Element_DispatchEvent")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool DispatchEvent(IntPtr element, string event_id, IntPtr parameters, bool interruptible, bool bubbles);
     }
 }

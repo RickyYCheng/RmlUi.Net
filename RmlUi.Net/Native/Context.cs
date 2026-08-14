@@ -30,30 +30,39 @@ namespace RmlUiNet.Native
         public static extern IntPtr LoadDocumentFromMemory(IntPtr context, string documentRml, string sourceUrl);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_IsMouseInteracting")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool IsMouseInteracting(IntPtr context);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessMouseLeave")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessMouseLeave(IntPtr context);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessMouseMove")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessMouseMove(IntPtr context, int x, int y, int keyModifierState);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessMouseButtonDown")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessMouseButtonDown(IntPtr context, int buttonIndex, int keyModifierState);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessMouseButtonUp")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessMouseButtonUp(IntPtr context, int buttonIndex, int keyModifierState);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessMouseWheel")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessMouseWheel(IntPtr context, Vector2f wheelDelta, int keyModifierState);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessKeyDown")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessKeyDown(IntPtr context, Input.KeyIdentifier identifier, int keyModifierState);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessKeyUp")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessKeyUp(IntPtr context, Input.KeyIdentifier identifier, int keyModifierState);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessTextInput")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool ProcessTextInput(IntPtr context, string input);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_AddEventListener")]
@@ -72,6 +81,7 @@ namespace RmlUiNet.Native
         public static extern IntPtr GetDataModel(IntPtr context, string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_RemoveDataModel")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool RemoveDataModel(IntPtr context, string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_GetFocusElement")]

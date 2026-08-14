@@ -6,6 +6,7 @@ namespace RmlUiNet.Native
     internal static class Rml
     {
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Initialise")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool Initialise();
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Shutdown")]
@@ -21,6 +22,7 @@ namespace RmlUiNet.Native
         public static extern void SetFileInterface(IntPtr fileInterface);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_LoadFontFace")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool LoadFontFace(string fileName, bool fallbackFace, FontWeight weight);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_CreateEventListener")]
@@ -30,6 +32,7 @@ namespace RmlUiNet.Native
         public static extern void ReleaseEventListener(IntPtr eventListener);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RemoveContext")]
+        [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool RemoveContext(string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RegisterPlugin")]

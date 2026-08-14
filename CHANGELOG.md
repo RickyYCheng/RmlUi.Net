@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Backspace in text inputs / native bool marshalling fixes
+
+- The vendored RmlUi (tag 6.2) crashed or read garbage when key events reached a
+  focused `<input type="text">` before its lines were formatted (no layout yet,
+  or no font face available): `WidgetTextInput::GetRelativeCursorIndices`
+  indexed `lines[-1]` on an empty line list. Patched in the vendored RmlUi
+  (`fork-6.2-fixes` branch on top of tag 6.2): the cursor now maps to the start
+  of the field when there are no lines. This is what made
+  `Context.ProcessKeyDown(Input::KI_BACK, 0)` fail (or crash on 32-bit builds)
+  while text input and arrow keys kept working.
+- All P/Invoke declarations returning a native C++ `bool` now marshal the
+  result with `[return: MarshalAs(UnmanagedType.I1)]`. Previously the 4-byte
+  BOOL marshalling read garbage upper bits on 32-bit Release builds, so
+  `Element.HasAttribute`/`HasClass`, `Event.IsPropagating`, and every other
+  boolean query could return the wrong value.
+- New smoke test `Input backspace deletion`: loads `<input type="text">`, types
+  `"ab"` with `ProcessTextInput`, presses `KI_BACK`, and checks the value is
+  `"a"` (plus a Delete no-op at end of text and a second backspace).
+- CI now also runs the full smoke suite against the win-x86 native build under
+  a 32-bit .NET host, so 32-bit-only breakage cannot ship again.
+
 ## 1.1.0 — 2026-08-13
 
 Published from the maintained fork `PourrezJ/RmlUi.Net` under the NuGet id

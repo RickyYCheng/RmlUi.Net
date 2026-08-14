@@ -21,6 +21,8 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
+          - os: windows-latest
+            rid: win-x86
           - os: ubuntu-latest
             rid: linux-x64
           - os: macos-14
@@ -35,12 +37,31 @@ jobs:
           name: native-${{ matrix.rid }}
           path: RmlUi.Net/runtimes
 
-      - name: Build smoke tests (warnings as errors)
-        run: dotnet build tests/RmlUi.Net.SmokeTests/RmlUi.Net.SmokeTests.csproj -c Release -warnaserror
+      - name: Install x86 .NET runtime (Windows x86)
+        if: matrix.rid == 'win-x86'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://dot.net/v1/dotnet-install.ps1 -OutFile "$env:RUNNER_TEMP\dotnet-install.ps1"
+          & "$env:RUNNER_TEMP\dotnet-install.ps1" -Architecture x86 -Channel 8.0 -InstallDir "$env:RUNNER_TEMP\dotnet-x86"
 
-      - name: Run smoke tests (Windows, with window)
-        if: runner.os == 'Windows'
+      - name: Build smoke tests (warnings as errors)
+        shell: pwsh
+        run: |
+          if ("${{ matrix.rid }}" -eq "win-x86") {
+            dotnet build tests/RmlUi.Net.SmokeTests/RmlUi.Net.SmokeTests.csproj -c Release -warnaserror -p:RmlNativeArch=x86
+          } else {
+            dotnet build tests/RmlUi.Net.SmokeTests/RmlUi.Net.SmokeTests.csproj -c Release -warnaserror
+          }
+
+      - name: Run smoke tests (Windows x64, with window)
+        if: matrix.rid == 'win-x64'
         run: dotnet tests/RmlUi.Net.SmokeTests/bin/Release/net8.0/RmlUi.Net.SmokeTests.dll --window
+
+      - name: Run smoke tests (Windows x86, 32-bit host)
+        if: matrix.rid == 'win-x86'
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP\dotnet-x86\dotnet.exe" tests/RmlUi.Net.SmokeTests/bin/Release/net8.0/RmlUi.Net.SmokeTests.dll
 
       - name: Run smoke tests (Linux)
         if: runner.os == 'Linux'
