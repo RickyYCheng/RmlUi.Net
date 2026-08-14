@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## 1.1.1 — 2026-08-14
 
 ### Backspace in text inputs / native bool marshalling fixes
 

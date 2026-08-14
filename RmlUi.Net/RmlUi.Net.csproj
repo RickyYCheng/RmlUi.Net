@@ -25,7 +25,7 @@
     <!-- Version is fixed and explicit: bump it here for each release (and in CHANGELOG.md).
          Pack explicitly with 'dotnet pack' from the CI pipeline, which stages all native
          artifacts first. -->
-    <VersionPrefix>1.1.0</VersionPrefix>
+    <VersionPrefix>1.1.1</VersionPrefix>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
     <GenerateAssemblyInformationalVersionAttribute>true</GenerateAssemblyInformationalVersionAttribute>
