@@ -99,5 +99,7 @@ published from this repository.
 - `.github/workflows/ci.yml`: push/PR — native build + parity + smoke tests on
   every platform, package assembly.
 - `.github/workflows/release.yml`: manual publishing — native rebuild, repack,
-  GitHub Packages push, GitHub release, and nuget.org push when the
-  `NUGET_API_KEY` secret is configured.
+  GitHub Packages push, GitHub release, and nuget.org push via **Trusted
+  Publishing** (an OIDC policy on nuget.org bound to this workflow file; no
+  API key secrets). Requires the repository variable `NUGET_USER` set to the
+  nuget.org profile name that owns the policy.
