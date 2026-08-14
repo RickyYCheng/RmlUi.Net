@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## 1.1.0 — 2026-08-13
 
+Published from the maintained fork `PourrezJ/RmlUi.Net` under the NuGet id
+**PourrezJ.RmlUi.Net** (the `RmlUi.Net` id on nuget.org belongs to the upstream
+project). The managed API is unchanged: this package is a drop-in replacement
+with the same `RmlUiNet` namespace and assembly name.
+
 ### Restoration of the 51 missing native exports (100 % export/import parity)
 
 Package 1.0.1 shipped an `RmlUiNative.dll` built from a commit that predated the

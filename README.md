@@ -81,9 +81,23 @@ dotnet pack RmlUi.Net/RmlUi.Net.csproj -c Release -o artifacts
 (`ValidateRuntimeArtifacts` target). The version is set via `VersionPrefix` in
 the `.csproj` (see `CHANGELOG.md`).
 
+## NuGet
+
+This repository is an independently maintained fork of the upstream
+`Chorizite/RmlUi.Net` project. It is published on nuget.org under its own
+package id:
+
+```powershell
+dotnet add package PourrezJ.RmlUi.Net
+```
+
+The `RmlUi.Net` id on nuget.org belongs to the upstream project and is not
+published from this repository.
+
 ## CI
 
 - `.github/workflows/ci.yml`: push/PR — native build + parity + smoke tests on
   every platform, package assembly.
-- `.github/workflows/release.yml`: manual publishing — repack + NuGet push
-  (nuget.org and GitHub Packages) + GitHub release.
+- `.github/workflows/release.yml`: manual publishing — native rebuild, repack,
+  GitHub Packages push, GitHub release, and nuget.org push when the
+  `NUGET_API_KEY` secret is configured.

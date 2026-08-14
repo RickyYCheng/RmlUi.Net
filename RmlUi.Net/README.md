@@ -11,6 +11,15 @@ based on HTML/CSS. Embedded RmlUi: **6.2**.
 | `linux-x64` | `runtimes/linux-x64/native/libRmlUiNative.so` |
 | `osx-x64` | `runtimes/osx-x64/native/RmlUiNative.dylib` (universal arm64+x86_64) |
 
+## Installation
+
+This package is an independently maintained fork of the upstream
+`Chorizite/RmlUi.Net` project and is published on nuget.org under its own id:
+
+```powershell
+dotnet add package PourrezJ.RmlUi.Net
+```
+
 ## Quick start
 
 ```csharp
@@ -36,7 +45,7 @@ Rml.Shutdown();
 Restores the 51 native exports that were missing from 1.0.1 (no more
 `EntryPointNotFoundException`), fixes `Element.SetAttribute`/`SetProperty` for
 empty string values, and ships native builds for all four platforms. See the
-[CHANGELOG](https://github.com/Chorizite/RmlUi.Net/blob/master/CHANGELOG.md)
+[CHANGELOG](https://github.com/PourrezJ/RmlUi.Net/blob/master/CHANGELOG.md)
 for details.
 
 ## License
