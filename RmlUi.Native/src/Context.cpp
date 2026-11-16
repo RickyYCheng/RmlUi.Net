@@ -28,6 +28,15 @@ RMLUI_CAPI void rml_Context_SetDimensions(Rml::Context *context, int x, int y) {
     context->SetDimensions(vec);
 }
 
+RMLUI_CAPI void rml_Context_SetDensityIndependentPixelRatio(Rml::Context *context, float dpRatio) {
+    if (context != nullptr)
+        context->SetDensityIndependentPixelRatio(dpRatio);
+}
+
+RMLUI_CAPI float rml_Context_GetDensityIndependentPixelRatio(Rml::Context *context) {
+    return context != nullptr ? context->GetDensityIndependentPixelRatio() : 1.0f;
+}
+
 RMLUI_CAPI void rml_Context_Render(Rml::Context *context) {
     context->Render();
 }

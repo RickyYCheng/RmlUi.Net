@@ -35,6 +35,20 @@ namespace RmlUiNet {
             Native.Context.SetDimensions(NativePtr, x, y);
         }
 
+        /// <summary>
+        /// Sets pixels per density-independent pixel. Scales <c>dp</c> and PPI lengths only;
+        /// <c>px</c> is never scaled, so a pixel-based sheet is unaffected.
+        /// </summary>
+        public void SetDensityIndependentPixelRatio(float dpRatio)
+        {
+            Native.Context.SetDensityIndependentPixelRatio(NativePtr, dpRatio);
+        }
+
+        public float GetDensityIndependentPixelRatio()
+        {
+            return Native.Context.GetDensityIndependentPixelRatio(NativePtr);
+        }
+
         public Element? GetFocusElement()
         {
             var ptr = Native.Context.GetFocusElement(NativePtr);

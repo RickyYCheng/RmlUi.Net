@@ -470,6 +470,50 @@ whatever the last definition/layout pass computed.
 
 ---
 
+## 16. The density ratio scales `dp`, not `px`
+
+`Context::SetDensityIndependentPixelRatio` looks like a global UI scale, but it only
+affects lengths written in `dp` and PPI units, plus the intrinsic size of some form
+controls. `px` is a physical unit and is never multiplied by it:
+
+```cpp
+// Source/Core/ComputeProperty.cpp:52
+float ComputeLength(NumericValue value, float font_size, float document_font_size, float dp_ratio, Vector2f vp_dimensions)
+{
+	if (Any(value.unit & Unit::PPI_UNIT))
+		return ComputePPILength(value, dp_ratio);
+
+	switch (value.unit)
+	{
+	case Unit::PX: return value.number;              // <- ratio not applied
+	case Unit::EM: return value.number * font_size;
+	case Unit::REM: return value.number * document_font_size;
+	case Unit::DP: return value.number * dp_ratio;   // <- only dp scales
+	default: break;
+	}
+```
+
+`font-size` goes through the same function (`Source/Core/ComputeProperty.cpp:117`), so a
+sheet that declares `font-size: 12px` keeps a 12-physical-pixel em box at every ratio.
+
+This matters because text is rasterised at the computed size: the glyph atlas is built
+from `(int)font_size` (`Source/Core/ElementStyle.cpp:1000`), with no scaling afterwards.
+Setting a ratio of 2 therefore does *not* sharpen an existing pixel-based sheet — it
+leaves the glyphs at the same 12 px bitmap and simply changes how much screen area
+`dp` lengths occupy. To get text rasterised at the display's real resolution the styles
+themselves have to use `dp`.
+
+Two related details:
+
+- The ratio is per context and is applied when computed values are recalculated, so it
+  must be set before the document is loaded (or followed by `Context::Update()`).
+- Glyph quads are snapped to whole pixels (`(position + box.origin).Round()`,
+  `Source/Core/FontEngineDefault/FontFaceLayer.h:57`), so at ratio 1 the atlas is sampled
+  1:1 and filtering never blurs it. Blurriness at that ratio is a *contrast* problem —
+  the coverage values in the atlas blended linearly — not a sampling problem.
+
+---
+
 ## Reporting
 
 If an issue here is wrong, or a binding-side workaround is missing, open an issue at

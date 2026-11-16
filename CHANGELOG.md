@@ -105,6 +105,15 @@ Also newly bound: `GetNumChildren`, `GetChild`, `GetFirstChild`, `GetLastChild`,
 - `Rml.RemoveContext` clears the wrapper cache: destroying a context destroys every
   element it owned, and the cached wrappers for those addresses were dangling.
 
+### Density-independent pixel ratio
+
+- `Context.SetDensityIndependentPixelRatio(float)` and
+  `Context.GetDensityIndependentPixelRatio()` are bound. RmlUi scales the `dp` and PPI units
+  and the intrinsic size of form controls by this ratio, so a high-DPI display can rasterise
+  glyphs at their real pixel size instead of stretching a 1x atlas. `px` is deliberately *not*
+  scaled — a sheet written in pixels is unaffected, which is the least obvious part of the
+  feature and is documented on the method.
+
 ### Documentation
 
 - New `KNOWN_ISSUES.md` documenting the vendored RmlUi behaviours that surprise
@@ -119,10 +128,12 @@ Also newly bound: `GetNumChildren`, `GetChild`, `GetFirstChild`, `GetLastChild`,
 
 - New `tests/RmlUi.Net.UnitTests` xunit project covering lifecycle, element
   traversal, selector queries, geometry, variants, dictionary, fonts, data models,
-  input, event dispatch, document structure and the wrapper cache (91 tests). Each
-  test gets its own context so documents cannot leak between tests.
+  input, event dispatch, document structure, the density ratio and the wrapper cache
+  (98 tests). Each test gets its own context so documents cannot leak between tests.
 - Root-caused a flaky test to the wrapper cache bug above rather than papering over
   it; the suite passes repeatedly (verified over consecutive runs).
+- `DensityScaleTests` asserts the ratio's real semantics rather than the getter: `dp`
+  lengths multiply by it, `px` lengths do not, and restoring the ratio restores the layout.
 - Layout tests load two Lato faces that ship with the test project (`assets/`,
   SIL OFL, taken from RmlUi's samples) instead of probing for a system font, so
   results no longer depend on the host machine. Font tests do the same.
