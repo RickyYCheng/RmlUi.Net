@@ -12,14 +12,14 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Title>RmlUi.Net (PourrezJ)</Title>
+    <Title>RmlUi.Net (RickyYC)</Title>
     <Product>RmlUi.Net</Product>
-    <PackageId>PourrezJ.RmlUi.Net</PackageId>
-    <Authors>PourrezJ</Authors>
-    <Company>PourrezJ</Company>
+    <PackageId>RickyYC.RmlUi.Net</PackageId>
+    <Authors>RickyYC</Authors>
+    <Company>RickyYC</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>C# bindings for RmlUi, maintained independently of the upstream RmlUi.Net package</Description>
-    <RepositoryUrl>https://github.com/PourrezJ/RmlUi.Net</RepositoryUrl>
+    <RepositoryUrl>https://github.com/RickyYCheng/RmlUi.Net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- Version is fixed and explicit: bump it here for each release (and in CHANGELOG.md).

@@ -1,7 +1,7 @@
 name: Release
 
-# Manual release pipeline for the standalone PourrezJ/RmlUi.Net package
-# (NuGet id: PourrezJ.RmlUi.Net). Rebuilds the native libraries on every
+# Manual release pipeline for the standalone RickyYCheng/RmlUi.Net package
+# (NuGet id: RickyYC.RmlUi.Net). Rebuilds the native libraries on every
 # platform, repacks, pushes to GitHub Packages, creates a GitHub release and
 # publishes to nuget.org via Trusted Publishing (an OIDC policy on nuget.org
 # bound to this workflow file — no API key secrets required).
@@ -12,7 +12,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  VERSION: 1.1.1
+  VERSION: 1.2.0
 
 jobs:
   native:
@@ -92,7 +92,7 @@ jobs:
           else
             gh release create "v${{ env.VERSION }}" \
               --repo="$GITHUB_REPOSITORY" \
-              --title="PourrezJ.RmlUi.Net v${{ env.VERSION }}" \
+              --title="RickyYC.RmlUi.Net v${{ env.VERSION }}" \
               --generate-notes \
               artifacts/*.nupkg
           fi

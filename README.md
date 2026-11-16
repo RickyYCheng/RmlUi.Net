@@ -97,7 +97,7 @@ This repository is an independently maintained fork of the upstream
 package id:
 
 ```powershell
-dotnet add package PourrezJ.RmlUi.Net
+dotnet add package RickyYC.RmlUi.Net
 ```
 
 The `RmlUi.Net` id on nuget.org belongs to the upstream project and is not

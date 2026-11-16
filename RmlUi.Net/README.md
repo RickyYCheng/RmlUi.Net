@@ -17,7 +17,7 @@ This package is an independently maintained fork of the upstream
 `Chorizite/RmlUi.Net` project and is published on nuget.org under its own id:
 
 ```powershell
-dotnet add package PourrezJ.RmlUi.Net
+dotnet add package RickyYC.RmlUi.Net
 ```
 
 ## Quick start
@@ -45,7 +45,7 @@ Rml.Shutdown();
 Restores the 51 native exports that were missing from 1.0.1 (no more
 `EntryPointNotFoundException`), fixes `Element.SetAttribute`/`SetProperty` for
 empty string values, and ships native builds for all four platforms. See the
-[CHANGELOG](https://github.com/PourrezJ/RmlUi.Net/blob/main/CHANGELOG.md)
+[CHANGELOG](https://github.com/RickyYCheng/RmlUi.Net/blob/main/CHANGELOG.md)
 for details.
 
 ## License
