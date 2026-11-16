@@ -1,7 +1,7 @@
 # RmlUi.Net
 
 C# bindings for [RmlUi](https://github.com/mikke89/RmlUi), a native UI library
-based on HTML/CSS. Embedded RmlUi: **6.2**.
+based on HTML/CSS. Embedded RmlUi: **6.3**.
 
 ## Repository layout
 
@@ -11,7 +11,9 @@ based on HTML/CSS. Embedded RmlUi: **6.2**.
   (`runtimes/<rid>/native/`).
 - `tools/RmlUiExportParity/` — checks native exports vs. managed P/Invoke
   imports (built-in PE/ELF/Mach-O parsers, zero dependencies).
-- `tests/RmlUi.Net.SmokeTests/` — smoke suite covering every public API.
+- `tests/RmlUi.Net.SmokeTests/` — smoke suite exercising every public API.
+- `tests/RmlUi.Net.UnitTests/` — xunit suite for behaviour (element tree,
+  selectors, geometry, data models, input, fonts).
 
 ## Prerequisites
 
@@ -57,10 +59,14 @@ dotnet tools/RmlUiExportParity/bin/Release/net8.0/RmlUiExportParity.dll `
 # RmlUi.Net/runtimes/<rid>/native/ first, see below)
 dotnet build tests/RmlUi.Net.SmokeTests/RmlUi.Net.SmokeTests.csproj -c Release -warnaserror
 dotnet tests/RmlUi.Net.SmokeTests/bin/Release/net8.0/RmlUi.Net.SmokeTests.dll   # add --window on Windows
+
+# Unit tests
+dotnet test tests/RmlUi.Net.UnitTests/RmlUi.Net.UnitTests.csproj -c Release
 ```
 
-The smoke tests copy the current platform's native library from
-`RmlUi.Net/runtimes/<rid>/native/` into their output directory.
+Both test projects copy the current platform's native library from
+`RmlUi.Net/runtimes/<rid>/native/` into their output directory. Pass
+`-p:RmlNativeArch=x86` to test against the 32-bit Windows build.
 
 ## Packaging
 

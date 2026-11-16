@@ -46,6 +46,35 @@ namespace RmlUiNet
         Instant
     }
 
+    /// <summary>Controls whether showing a document also scrolls the focused element into view.</summary>
+    public enum ScrollFlag
+    {
+        /// <summary>Never scroll.</summary>
+        None,
+
+        /// <summary>Scroll the focused element into view, if applicable.</summary>
+        Auto
+    }
+
+    /// <summary>Alignment applied by <c>ScrollIntoView</c>, matching <c>Rml::ScrollAlignment</c>.</summary>
+    public enum ScrollAlignment
+    {
+        /// <summary>Align to the start of the scroll container.</summary>
+        Start,
+
+        /// <summary>Align to the center of the scroll container.</summary>
+        Center,
+
+        /// <summary>Align to the end of the scroll container.</summary>
+        End,
+
+        /// <summary>Align with the minimal scroll change.</summary>
+        Nearest,
+
+        /// <summary>Do not scroll if already in view, otherwise align to the center.</summary>
+        Adaptive
+    }
+
     public enum VariantType {
         NONE = '-',
         BOOL = 'B',
@@ -80,6 +109,13 @@ namespace RmlUiNet
         Auto,
         Normal = 400,
         Bold = 700
+    }
+
+    /// <summary>Font slant registered with a font face, matching <c>Rml::Style::FontStyle</c>.</summary>
+    public enum FontStyle
+    {
+        Normal,
+        Italic
     }
 
     public enum BoxArea { Margin, Border, Padding, Content, Auto };

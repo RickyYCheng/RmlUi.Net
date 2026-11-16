@@ -8,7 +8,7 @@ namespace RmlUiNet.Native {
         public static extern IntPtr Create(string tagName, OnRender? onRender);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementCustom_Free")]
-        public static extern IntPtr Free(IntPtr element);
+        public static extern void Free(IntPtr element);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnRender();

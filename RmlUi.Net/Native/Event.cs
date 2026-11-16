@@ -9,6 +9,9 @@ namespace RmlUiNet.Native
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_GetId")]
         public static extern ushort GetId(IntPtr ev);
 
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_GetEventType")]
+        public static extern IntPtr GetEventType(IntPtr ev);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Event_GetPhase")]
         public static extern int GetPhase(IntPtr ev);
 

@@ -25,6 +25,10 @@ namespace RmlUiNet.Native
         [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool LoadFontFace(string fileName, bool fallbackFace, FontWeight weight);
 
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_LoadFontFaceEx")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool LoadFontFaceEx(string fileName, string family, FontStyle style, FontWeight weight, bool fallbackFace, int faceIndex);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_CreateEventListener")]
         public static extern IntPtr CreateEventListener(OnProcessEvent onProcessEvent, OnAttachEvent onAttachEvent, OnDetachEvent onDetachEvent);
 
@@ -48,7 +52,7 @@ namespace RmlUiNet.Native
         public static extern IntPtr CreateString(string str);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Log")]
-        public static extern IntPtr Log(LogType type, string str);
+        public static extern void Log(LogType type, string str);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_UpdateString")]
         public static extern void UpdateString(IntPtr str, string newContent);

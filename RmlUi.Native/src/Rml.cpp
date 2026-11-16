@@ -30,8 +30,21 @@ RMLUI_CAPI void rml_SetFileInterface(Rml::FileInterface* fileInterface) {
     Rml::SetFileInterface(fileInterface);
 }
 
-RMLUI_CAPI void rml_LoadFontFace(const char *fileName, bool fallbackFace, Rml::Style::FontWeight weight) {
-    Rml::LoadFontFace(fileName, fallbackFace, weight);
+RMLUI_CAPI bool rml_LoadFontFace(const char *fileName, bool fallbackFace, Rml::Style::FontWeight weight) {
+    if (fileName == nullptr) {
+        return false;
+    }
+    return Rml::LoadFontFace(fileName, fallbackFace, weight);
+}
+
+// Loads a font face and registers it under an explicit family/style/weight, the 6.3
+// overload that backs the RCSS @font-face rule. Returns false when RmlUi rejects it.
+RMLUI_CAPI bool rml_LoadFontFaceEx(const char *fileName, const char *family, Rml::Style::FontStyle style,
+                                   Rml::Style::FontWeight weight, bool fallbackFace, int faceIndex) {
+    if (fileName == nullptr || family == nullptr) {
+        return false;
+    }
+    return Rml::LoadFontFace(fileName, family, style, weight, fallbackFace, faceIndex);
 }
 
 RMLUI_CAPI Rml::EventId rml_RegisterEventType(const char* type, bool interruptible, bool bubbles, Rml::DefaultActionPhase default_action_phase) {
@@ -46,8 +59,11 @@ RMLUI_CAPI void rml_ReleaseEventListener(Rml::EventListener *eventListener) {
     delete eventListener;
 }
 
-RMLUI_CAPI void rml_RemoveContext(const char *name) {
-    Rml::RemoveContext(name);
+RMLUI_CAPI bool rml_RemoveContext(const char *name) {
+    if (name == nullptr) {
+        return false;
+    }
+    return Rml::RemoveContext(name);
 }
 
 RMLUI_CAPI void rml_RegisterPlugin(Rml::Plugin *plugin) {

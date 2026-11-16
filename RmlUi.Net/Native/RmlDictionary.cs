@@ -22,6 +22,9 @@ namespace RmlUiNet.Native
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_Insert")]
         public static extern void Insert(IntPtr dict, string prop, IntPtr variant);
 
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_Remove")]
+        public static extern void Remove(IntPtr dict, string prop);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_Get")]
         public static extern IntPtr Get(IntPtr dict, string prop);
 

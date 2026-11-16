@@ -44,7 +44,7 @@ namespace RmlUiNet
             var element = GetElementByTypeName(elementPtr, elementType);
 
             if (null == element) {
-                throw new Exception($"Element type not supported[IntPtr: {elementPtr:X8}]: {elementType} ({elementType == "class Rml::ElementFormControlInput"})");
+                throw new Exception($"Element type not supported: '{elementType}' (pointer {elementPtr}).");
             }
 
             return element;
@@ -52,9 +52,12 @@ namespace RmlUiNet
 
         public static Element? GetElementByTypeName(IntPtr elementPtr, string elementType)
         {
+            // A zero pointer means the lookup found nothing (no such child, no parent, no
+            // owner document). Wrapping it would hand out an element that dereferences null.
+            if (elementPtr == IntPtr.Zero)
+                return null;
+
             if (elementType == "class Rml::ElementDocument" || elementType == "class ElementDocumentCustom") {
-                return ElementDocument.Create(elementPtr);
-            } else if (elementType == "class Rml::ElementDocument") {
                 return ElementDocument.Create(elementPtr);
             } else if (elementType == "class Rml::ElementForm") {
                 return ElementForm.Create(elementPtr);

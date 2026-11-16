@@ -88,6 +88,9 @@ namespace RmlUi.Net.SmokeTests
                 if (++executed <= limit || limit <= 0) Run("Context creation + input processing", TestContext);
                 if (++executed <= limit || limit <= 0) Run("Document load + title/source", TestDocument);
                 if (++executed <= limit || limit <= 0) Run("Element basics", TestElementBasics);
+                if (++executed <= limit || limit <= 0) Run("Element traversal + queries", TestElementTraversalAndQueries);
+                if (++executed <= limit || limit <= 0) Run("Font faces", TestFontFaces);
+                if (++executed <= limit || limit <= 0) Run("RmlUi 6.3 additions", TestSixThreeAdditions);
                 if (++executed <= limit || limit <= 0) Run("Element tree manipulation", TestElementTree);
                 if (++executed <= limit || limit <= 0) Run("Attributes + properties (incl. empty strings)", TestAttributesAndProperties);
                 if (++executed <= limit || limit <= 0) Run("Form controls", TestFormControls);
@@ -202,9 +205,39 @@ namespace RmlUi.Net.SmokeTests
             public void AddFile(string path, string content) =>
                 _files[path] = System.Text.Encoding.UTF8.GetBytes(content);
 
+            /// <summary>
+            /// Returns the file content from memory, falling back to the real file system.
+            /// RmlUi loads font faces through the file interface, so without the fallback no
+            /// system font can be opened and every font test would see a failure.
+            /// </summary>
+            private bool TryGetContent(string path, out byte[] data)
+            {
+                if (_files.TryGetValue(path, out byte[]? inMemory))
+                {
+                    data = inMemory;
+                    return true;
+                }
+
+                try
+                {
+                    if (System.IO.File.Exists(path))
+                    {
+                        data = System.IO.File.ReadAllBytes(path);
+                        return true;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Unreadable path: treat as missing.
+                }
+
+                data = Array.Empty<byte>();
+                return false;
+            }
+
             public override IntPtr Open(string path)
             {
-                if (!_files.TryGetValue(path, out byte[]? data)) return IntPtr.Zero;
+                if (!TryGetContent(path, out byte[] data)) return IntPtr.Zero;
                 long handle = _nextHandle++;
                 _openFiles[handle] = data;
                 _positions[handle] = 0;
@@ -265,7 +298,7 @@ namespace RmlUi.Net.SmokeTests
             }
 
             public override string LoadFile(string path) =>
-                _files.TryGetValue(path, out byte[]? data)
+                TryGetContent(path, out byte[] data)
                     ? System.Text.Encoding.UTF8.GetString(data)
                     : string.Empty;
         }
@@ -562,6 +595,156 @@ namespace RmlUi.Net.SmokeTests
 
             ElementGeneric? found = div.QuerySelector("#inner-p") as ElementGeneric;
             Assert(found is not null, "QuerySelector returned null");
+        }
+
+        /// <summary>
+        /// Traversal, selector queries and geometry accessors bound for RmlUi 6.3. These
+        /// exports existed natively but had no managed wrapper, so nothing exercised them.
+        /// </summary>
+        private static void TestElementTraversalAndQueries()
+        {
+            ElementDocument document = _document!;
+            Element root = document.GetElementById("div1") ?? throw new Exception("div1 not found");
+
+            // Element list queries: the native side hands back an opaque list that the
+            // managed wrapper copies into element wrappers and releases.
+            var paragraphs = root.GetElementsByTagName("p");
+            Assert(paragraphs.Count > 0, "GetElementsByTagName(p) returned nothing");
+
+            var byClass = root.GetElementsByClassName("box");
+            Assert(byClass.Count == 0 || byClass[0] is not null, "GetElementsByClassName returned a null element");
+
+            var bySelector = root.QuerySelectorAll("#inner-p");
+            Assert(bySelector.Count == 1, $"QuerySelectorAll(#inner-p) returned {bySelector.Count}");
+
+            Assert(root.Matches("div"), "Matches(div) should be true for div1");
+            Assert(!root.Matches("span"), "Matches(span) should be false for div1");
+            Assert(root.Closest("body") is not null, "Closest(body) returned null");
+
+            // Traversal.
+            Assert(root.Id.Length > 0, "Id is empty");
+            _ = root.NumChildren;
+            _ = root.HasChildNodes;
+            _ = root.GetChild(0);
+            _ = root.GetFirstChild();
+            _ = root.GetLastChild();
+            _ = root.GetNextSibling();
+            _ = root.GetPreviousSibling();
+            _ = root.GetOffsetParent();
+            _ = root.GetOffsetLeft();
+            _ = root.GetOffsetWidth();
+            _ = root.GetOffsetHeight();
+            _ = root.GetClientLeft();
+            _ = root.GetClientTop();
+            _ = root.GetScrollTop();
+            _ = root.GetScrollWidth();
+            _ = root.GetScrollHeight();
+            root.ScrollIntoView();
+
+            // SetInnerText must replace *all* children, not just existing text nodes.
+            Element holder = root.GetElementById("inner-p") ?? throw new Exception("inner-p not found");
+            holder.SetInnerRml("<b>bold</b>");
+            holder.SetInnerText("plain");
+            AssertEqual("plain", holder.GetInnerRml(), "SetInnerText should leave a single text node");
+
+            // InsertBefore must move an existing element without destroying it. Building an
+            // owning pointer from a raw element used to delete the still-attached element.
+            Element? first = root.GetFirstChild();
+            Element? last = root.GetLastChild();
+            if (first is not null && last is not null && first.NativePtr != last.NativePtr)
+            {
+                bool inserted = root.InsertBefore(last, first);
+                Assert(inserted, "InsertBefore returned false");
+                Assert(root.GetFirstChild()?.NativePtr == last.NativePtr, "InsertBefore did not move the element to the front");
+            }
+        }
+
+        /// <summary>
+        /// RmlUi 6.3 font API surface: the plain overload must report success/failure instead
+        /// of discarding the native result, and the explicit-family overload must exist.
+        /// </summary>
+        private static void TestFontFaces()
+        {
+            Assert(!Rml.LoadFontFace("__missing_font__.ttf"), "LoadFontFace should fail for a missing file");
+            Assert(!Rml.LoadFontFace("__missing_font__.ttf", "family", FontStyle.Normal),
+                "LoadFontFace with an explicit family should fail for a missing file");
+
+            foreach (string candidate in SystemFontCandidates())
+            {
+                if (!System.IO.File.Exists(candidate))
+                    continue;
+
+                Assert(Rml.LoadFontFace(candidate), $"LoadFontFace failed for '{candidate}'");
+                Assert(Rml.LoadFontFace(candidate), "loading the same face twice should succeed");
+                Assert(Rml.LoadFontFace(candidate, "smoke-font-family", FontStyle.Normal),
+                    "LoadFontFace with an explicit family failed");
+                return;
+            }
+        }
+
+        private static System.Collections.Generic.IEnumerable<string> SystemFontCandidates()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                yield return @"C:\Windows\Fonts\segoeui.ttf";
+                yield return @"C:\Windows\Fonts\arial.ttf";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                yield return "/System/Library/Fonts/Supplemental/Arial.ttf";
+            }
+            else
+            {
+                yield return "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+            }
+        }
+
+        /// <summary>6.3 additions on the document and event APIs.</summary>
+        private static void TestSixThreeAdditions()
+        {
+            ElementDocument document = _document!;
+
+            // ElementDocument::Show gained a ScrollFlag argument in 6.3.
+            document.Show(ModalFlag.None, FocusFlag.Auto, ScrollFlag.Auto);
+            document.Show(ModalFlag.Keep, FocusFlag.Keep, ScrollFlag.None);
+
+            // Dictionary::Remove is now reachable from managed code.
+            IntPtr dictionary = Native.RmlDictionary.Create();
+            Assert(dictionary != IntPtr.Zero, "RmlDictionary.Create returned null");
+            try
+            {
+                var value = new Variant(1);
+                try
+                {
+                    Native.RmlDictionary.Insert(dictionary, "key", value.NativePtr);
+                    AssertEqual(1, Native.RmlDictionary.Size(dictionary), "dictionary size after insert");
+                    Native.RmlDictionary.Remove(dictionary, "key");
+                    AssertEqual(0, Native.RmlDictionary.Size(dictionary), "dictionary size after remove");
+                }
+                finally
+                {
+                    Native.Variant.Free(value.NativePtr);
+                }
+            }
+            finally
+            {
+                Native.RmlDictionary.Free(dictionary);
+            }
+
+            // Struct member registration, previously unreachable.
+            var model = _context!.CreateDataModel("smoke_struct_members");
+            try
+            {
+                StructHandle? handle = model.RegisterStructHandle("smoke_point");
+                Assert(handle is not null, "RegisterStructHandle returned null");
+                Assert(handle!.RegisterMember("x", 0, StructMemberType.Float), "RegisterMember(float)");
+                Assert(handle.RegisterMemberInt("y", 4), "RegisterMember(int)");
+            }
+            finally
+            {
+                model.Dispose();
+                _context.RemoveDataModel("smoke_struct_members");
+            }
         }
 
         private static void TestElementTree()

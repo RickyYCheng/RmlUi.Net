@@ -14,7 +14,7 @@ namespace RmlUiNet.Native
         public static extern IntPtr Create(OnEventListenerInstancer eventListenerInstancer);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_EventListenerInstancer_Free")]
-        public static extern IntPtr Free(IntPtr eventListenerInstancer);
+        public static extern void Free(IntPtr eventListenerInstancer);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate IntPtr OnEventListenerInstancer(string value, IntPtr element);

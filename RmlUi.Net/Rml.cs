@@ -42,6 +42,23 @@ namespace RmlUiNet
             return Native.Rml.LoadFontFace(fileName, fallbackFace, weight);
         }
 
+        /// <summary>
+        /// Adds a new font face to the font engine and registers it under an explicit family,
+        /// style and weight instead of the ones read from the face itself.
+        /// </summary>
+        /// <param name="fileName">The file to load the face from.</param>
+        /// <param name="family">The family to register the font as.</param>
+        /// <param name="style">The style to register the font as.</param>
+        /// <param name="weight">The weight to load, or to register the face as. <see cref="FontWeight.Auto"/> loads all found weights.</param>
+        /// <param name="fallbackFace">True to use this font face for unknown characters in other font faces.</param>
+        /// <param name="faceIndex">The index of the font face within a font collection.</param>
+        /// <returns>True if the face was loaded successfully, false otherwise.</returns>
+        public static bool LoadFontFace(string fileName, string family, FontStyle style,
+            FontWeight weight = FontWeight.Auto, bool fallbackFace = false, int faceIndex = 0)
+        {
+            return Native.Rml.LoadFontFaceEx(fileName, family, style, weight, fallbackFace, faceIndex);
+        }
+
         public static EventId RegisterEventType(string type, bool interruptible, bool bubbles, DefaultActionPhase defaultActionPhase) {
             return Native.Rml.RegisterEventType(type, interruptible, bubbles, defaultActionPhase);
         }

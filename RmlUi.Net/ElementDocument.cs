@@ -42,9 +42,10 @@ namespace RmlUiNet
         /// </summary>
         /// <param name="modalFlag">Flags controlling the modal state of the document, see the 'ModalFlag' description for details.</param>
         /// <param name="focusFlag">Flags controlling the focus, see the 'FocusFlag' description for details.</param>
-        public void Show(ModalFlag modalFlag = ModalFlag.None, FocusFlag focusFlag = FocusFlag.Auto)
+        /// <param name="scrollFlag">Flags controlling whether the focused element is scrolled into view.</param>
+        public void Show(ModalFlag modalFlag = ModalFlag.None, FocusFlag focusFlag = FocusFlag.Auto, ScrollFlag scrollFlag = ScrollFlag.Auto)
         {
-            Native.ElementDocument.Show(NativePtr, modalFlag, focusFlag);
+            Native.ElementDocument.Show(NativePtr, modalFlag, focusFlag, scrollFlag);
         }
 
         public void PullToFront() {

@@ -2,7 +2,7 @@ name: 'Build'
 on:
   push:
     branches:
-    - master
+    - main
 # Version is fixed in RmlUi.Net.csproj (VersionPrefix); bump it there and here
 # for each release.
 env:

@@ -16,6 +16,19 @@ namespace RmlUiNet {
         public EventId Id => (EventId)Native.Event.GetId(NativePtr);
 
         /// <summary>
+        /// The event's type name, e.g. <c>click</c> or a custom name registered through
+        /// <see cref="Rml.RegisterEventType"/>.
+        /// </summary>
+        public string Type
+        {
+            get
+            {
+                var ptr = Native.Event.GetEventType(NativePtr);
+                return ptr == IntPtr.Zero ? string.Empty : Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+            }
+        }
+
+        /// <summary>
         /// The current propagation phase.
         /// </summary>
         public EventPhase Phase => (EventPhase)Native.Event.GetPhase(NativePtr);

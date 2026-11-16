@@ -45,7 +45,7 @@ Rml.Shutdown();
 Restores the 51 native exports that were missing from 1.0.1 (no more
 `EntryPointNotFoundException`), fixes `Element.SetAttribute`/`SetProperty` for
 empty string values, and ships native builds for all four platforms. See the
-[CHANGELOG](https://github.com/PourrezJ/RmlUi.Net/blob/master/CHANGELOG.md)
+[CHANGELOG](https://github.com/PourrezJ/RmlUi.Net/blob/main/CHANGELOG.md)
 for details.
 
 ## License

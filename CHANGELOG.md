@@ -2,6 +2,91 @@
 
 All notable changes to this project are documented in this file.
 
+## 1.2.0 — unreleased
+
+### Vendored RmlUi upgraded to 6.3
+
+The submodule now tracks the official `6.3` tag (`ba95ffe8`). The C++ binding sources
+compiled unchanged against it; the existing `WidgetTextInput` patch still applies
+(RmlUi 6.3 fixed a related out-of-bounds access but not the empty-`lines` case) and is
+still required.
+
+New RmlUi 6.3 API exposed on the managed side:
+
+- `Rml.LoadFontFace(fileName, family, style, weight, fallbackFace, faceIndex)` — the
+  overload behind the new RCSS `@font-face` rule, which registers a face under a
+  caller-chosen family instead of the name stored in the file. `FontStyle` is new.
+- `ElementDocument.Show(ModalFlag, FocusFlag, ScrollFlag)` — `ScrollFlag` controls
+  whether the focused element is scrolled into view; `ScrollAlignment.Adaptive` is new.
+- `DocumentScope`/`StructHandle.RegisterMember` and the struct-member exports
+  (`rml_StructHandle_RegisterMember{Float,Int,String}`) are now reachable. The
+  previous `DataModelConstructor.RegisterStruct` truncated the returned pointer to
+  `int`; `RegisterStructHandle` returns the full handle.
+
+### Native/managed ABI corrections
+
+Thirteen exports returned `void` in C++ while the managed side declared `bool` or
+`IntPtr`. The managed value was therefore read from an undefined return register, so
+the result was effectively random:
+
+- `rml_LoadFontFace`, `rml_RemoveContext`, `rml_Element_Focus` and
+  `rml_Element_SetProperty` now really return `bool` (each also null-checks its
+  arguments).
+- `rml_Log`, `rml_Element_SetClass`, `rml_Element_SetAttributeString`,
+  `rml_Element_ScrollTo`, `rml_ElementDocument_SetTitle`, `rml_ElementCustom_Free`,
+  `rml_EventInstancer_Free`, `rml_EventListenerInstancer_Free` and
+  `rml_RenderInterface_Test` now match their existing `void` declaration on the
+  managed side.
+
+`DataModelHandle.IsVariableDirty` returned `void` and discarded the flag; it now
+returns `bool`.
+
+### Element tree and query bindings
+
+28 native exports had no managed wrapper. Most importantly, the element-list queries
+(`QuerySelectorAll`, `GetElementsByTagName`, `GetElementsByClassName`) existed only as
+commented-out native code that returned a pointer to a stack local. They are now
+implemented as heap-allocated opaque handles read through `rml_ElementList_*` and
+released with `rml_ElementList_Free`, and backed by `IReadOnlyList<Element>` on the
+managed side.
+
+Also newly bound: `GetNumChildren`, `GetChild`, `GetFirstChild`, `GetLastChild`,
+`GetNextSibling`, `GetPreviousSibling`, `HasChildNodes`, `GetId`/`SetId`,
+`GetClientLeft`/`GetClientTop`, `GetOffsetLeft`/`GetOffsetWidth`/`GetOffsetHeight`/
+`GetOffsetParent`, `GetScrollTop`/`GetScrollWidth`/`GetScrollHeight`,
+`Closest`, `Matches`, `IsClassSet`, `InsertBefore`, `SetInnerText`,
+`ScrollIntoView`, `Event.Type` and `Dictionary.Remove`.
+
+### Element ownership and tree-mutation fixes
+
+- `rml_Element_InsertBefore` built an owning `ElementPtr` straight from a raw pointer.
+  That created a second owner for an element that was still attached to its tree, so
+  the temporary deleted it on return and left the document with a dangling child; any
+  later access crashed. It now detaches the element (from its parent or the
+  detached-element pool) the way `AppendChild`/`ReplaceChild` already did.
+- `rml_Element_SetInnerText` only removed `#text` children, so calling it on an element
+  that contained markup left the markup in place. It now removes every child.
+- `Element.GetParentNode()` and `Util.GetElementByTypeName` no longer produce a wrapper
+  around a null pointer: a missing parent, child or owner document returns `null`
+  instead of an object that crashes on first use.
+- `Box.GetPosition`/`GetSize` used to allocate a `V2F` on the native heap per call and
+  never free it. They now write into caller-provided floats.
+
+### Tests
+
+- New `tests/RmlUi.Net.UnitTests` xunit project covering lifecycle, element
+  traversal, selector queries, geometry, variants, dictionary, fonts, data models and
+  input. Each test gets its own context so documents cannot leak between tests.
+- The smoke suite gained `Element traversal + queries`, `Font faces` and
+  `RmlUi 6.3 additions` cases (26 total).
+- Both test projects copy the current platform's native library next to the test
+  assembly and can switch between the x64 and x86 builds via `RmlNativeArch`.
+
+### Repository
+
+- The default branch is now `main`; `master` was deleted and the CI workflows updated.
+- Test and tool projects are part of `RmlUi.Net.sln`.
+
 ## 1.1.1 — 2026-08-14
 
 ### Backspace in text inputs / native bool marshalling fixes

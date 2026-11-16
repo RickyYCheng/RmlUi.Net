@@ -21,8 +21,9 @@ namespace RmlUiNet {
             Native.DataModelHandle.DirtyVariable(NativePtr, name);
         }
 
-        public void IsVariableDirty(string name) {
-            Native.DataModelHandle.IsVariableDirty(NativePtr, name);
+        /// <summary>True when the named variable is flagged dirty and will be re-read on the next update.</summary>
+        public bool IsVariableDirty(string name) {
+            return Native.DataModelHandle.IsVariableDirty(NativePtr, name);
         }
 
         public override void Dispose() {

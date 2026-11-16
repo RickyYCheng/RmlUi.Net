@@ -115,7 +115,7 @@ namespace RmlUiNet
         void SetProperty(string propertyName, string value);
         void AddEventListener(string name, Action<Event> action);
         string GetInnerRml();
-        Element GetParentNode();
+        Element? GetParentNode();
         void ReplaceChild(Element elementToinsert, Element elementToReplace);
         Element? QuerySelector(string selector);
         bool HasClass(string className);
@@ -123,6 +123,87 @@ namespace RmlUiNet
         void RemoveEventListener(string name, Action<Event> action);
         void RemoveAttribute(string prop);
         bool HasAttribute(string attributeName);
+
+        /// <summary>The element's <c>id</c> attribute, or an empty string when unset.</summary>
+        string Id { get; }
+
+        /// <summary>Sets the element's <c>id</c> attribute.</summary>
+        void SetId(string id);
+
+        /// <summary>Number of child elements.</summary>
+        int NumChildren { get; }
+
+        /// <summary>True when the element has at least one child node.</summary>
+        bool HasChildNodes { get; }
+
+        /// <summary>Child element at the given index.</summary>
+        Element? GetChild(int index);
+
+        /// <summary>The first child element, or null.</summary>
+        Element? GetFirstChild();
+
+        /// <summary>The last child element, or null.</summary>
+        Element? GetLastChild();
+
+        /// <summary>The next sibling element, or null.</summary>
+        Element? GetNextSibling();
+
+        /// <summary>The previous sibling element, or null.</summary>
+        Element? GetPreviousSibling();
+
+        /// <summary>Replaces this element's children with a single text node.</summary>
+        void SetInnerText(string text);
+
+        /// <summary>Moves <paramref name="elementToAdd"/> before <paramref name="adjacentElement"/>.</summary>
+        bool InsertBefore(Element elementToAdd, Element adjacentElement);
+
+        /// <summary>The nearest ancestor matching the selector, or null.</summary>
+        Element? Closest(string selectors);
+
+        /// <summary>True when the element matches the selector.</summary>
+        bool Matches(string selectors);
+
+        /// <summary>True when the class is set on the element. Alias of <see cref="HasClass"/>.</summary>
+        bool IsClassSet(string className);
+
+        /// <summary>All descendants matching the selector.</summary>
+        IReadOnlyList<Element> QuerySelectorAll(string selector);
+
+        /// <summary>All descendant elements with the given tag name.</summary>
+        IReadOnlyList<Element> GetElementsByTagName(string tagName);
+
+        /// <summary>All descendant elements carrying the given class.</summary>
+        IReadOnlyList<Element> GetElementsByClassName(string className);
+
+        /// <summary>Scrolls the element into view using the adaptive alignment.</summary>
+        void ScrollIntoView();
+
+        /// <inheritdoc cref="Element.GetOffsetLeft"/>
+        float GetOffsetLeft();
+
+        /// <inheritdoc cref="Element.GetOffsetWidth"/>
+        float GetOffsetWidth();
+
+        /// <inheritdoc cref="Element.GetOffsetHeight"/>
+        float GetOffsetHeight();
+
+        /// <summary>The offset parent element, or null for the root.</summary>
+        Element? GetOffsetParent();
+
+        /// <inheritdoc cref="Element.GetClientLeft"/>
+        float GetClientLeft();
+
+        /// <inheritdoc cref="Element.GetClientTop"/>
+        float GetClientTop();
+
+        /// <inheritdoc cref="Element.GetScrollTop"/>
+        float GetScrollTop();
+
+        /// <inheritdoc cref="Element.GetScrollWidth"/>
+        float GetScrollWidth();
+
+        /// <inheritdoc cref="Element.GetScrollHeight"/>
+        float GetScrollHeight();
     }
 
     public abstract class Element<T> : RmlBase<T>, Element
@@ -510,18 +591,15 @@ namespace RmlUiNet
             Native.Element.SetAttributeString(NativePtr, attributeName, value);
         }
 
-        public Element GetParentNode()
+        /// <summary>The parent element, or null for the root.</summary>
+        public Element? GetParentNode()
         {
             var elementPtr = Native.Element.GetParentNode(NativePtr);
-            var nativeElementType = Native.Element.GetElementTypeName(elementPtr);
-            var elementType = Marshal.PtrToStringAnsi(nativeElementType);
+            if (elementPtr == IntPtr.Zero)
+                return null;
 
-            if (null == elementType)
-            {
-                return null!;
-            }
-
-            return Util.GetOrThrowElementByTypeName(elementPtr, elementType);
+            var elementType = Marshal.PtrToStringAnsi(Native.Element.GetElementTypeName(elementPtr));
+            return elementType is null ? null : Util.GetOrThrowElementByTypeName(elementPtr, elementType);
         }
 
         public void ReplaceChild(Element elementToinsert, Element elementToReplace)
@@ -550,6 +628,189 @@ namespace RmlUiNet
             if (string.IsNullOrEmpty(prop)) throw new ArgumentNullException("prop");
             Native.Element.RemoveAttribute(NativePtr, prop);
         }
+
+        #region Traversal
+
+        /// <inheritdoc />
+        public string Id
+        {
+            get
+            {
+                var ptr = Native.Element.GetId(NativePtr);
+                return ptr == IntPtr.Zero ? string.Empty : Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+            }
+        }
+
+        /// <inheritdoc />
+        public int NumChildren => Native.Element.GetNumChildren(NativePtr, false);
+
+        /// <inheritdoc />
+        public bool HasChildNodes => Native.Element.HasChildNodes(NativePtr);
+
+        /// <inheritdoc />
+        public Element? GetChild(int index)
+        {
+            if (index < 0) throw new ArgumentOutOfRangeException(nameof(index));
+            return WrapOrNull(Native.Element.GetChild(NativePtr, index));
+        }
+
+        /// <inheritdoc />
+        public Element? GetFirstChild() => WrapOrNull(Native.Element.GetFirstChild(NativePtr));
+
+        /// <inheritdoc />
+        public Element? GetLastChild() => WrapOrNull(Native.Element.GetLastChild(NativePtr));
+
+        /// <inheritdoc />
+        public Element? GetNextSibling() => WrapOrNull(Native.Element.GetNextSibling(NativePtr));
+
+        /// <inheritdoc />
+        public Element? GetPreviousSibling() => WrapOrNull(Native.Element.GetPreviousSibling(NativePtr));
+
+        /// <inheritdoc />
+        public void SetInnerText(string text)
+        {
+            if (text == null) throw new ArgumentNullException(nameof(text));
+            Native.Element.SetInnerText(NativePtr, text);
+        }
+
+        /// <inheritdoc />
+        public bool InsertBefore(Element elementToAdd, Element adjacentElement)
+        {
+            if (elementToAdd == null) throw new ArgumentNullException(nameof(elementToAdd));
+            if (adjacentElement == null) throw new ArgumentNullException(nameof(adjacentElement));
+            return Native.Element.InsertBefore(NativePtr, elementToAdd.NativePtr, adjacentElement.NativePtr);
+        }
+
+        /// <summary>Sets the element's <c>id</c> attribute.</summary>
+        public void SetId(string id)
+        {
+            if (id == null) throw new ArgumentNullException(nameof(id));
+            Native.Element.SetId(NativePtr, id);
+        }
+
+        #endregion
+
+        #region Queries
+
+        /// <inheritdoc />
+        public Element? Closest(string selectors)
+        {
+            if (string.IsNullOrEmpty(selectors)) throw new ArgumentNullException(nameof(selectors));
+            return WrapOrNull(Native.Element.Closest(NativePtr, selectors));
+        }
+
+        /// <inheritdoc />
+        public bool Matches(string selectors)
+        {
+            if (string.IsNullOrEmpty(selectors)) throw new ArgumentNullException(nameof(selectors));
+            return Native.Element.Matches(NativePtr, selectors);
+        }
+
+        /// <inheritdoc />
+        public bool IsClassSet(string className)
+        {
+            if (string.IsNullOrEmpty(className)) throw new ArgumentNullException(nameof(className));
+            return Native.Element.IsClassSet(NativePtr, className);
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<Element> QuerySelectorAll(string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) throw new ArgumentNullException(nameof(selector));
+            return WrapList(Native.Element.QuerySelectorAll(NativePtr, selector));
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<Element> GetElementsByTagName(string tagName)
+        {
+            if (string.IsNullOrEmpty(tagName)) throw new ArgumentNullException(nameof(tagName));
+            return WrapList(Native.Element.GetElementsByTagName(NativePtr, tagName));
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyList<Element> GetElementsByClassName(string className)
+        {
+            if (string.IsNullOrEmpty(className)) throw new ArgumentNullException(nameof(className));
+            return WrapList(Native.Element.GetElementsByClassName(NativePtr, className));
+        }
+
+        /// <summary>
+        /// Copies an opaque native <c>ElementList</c> into managed wrappers and releases it.
+        /// The list holds non-owning element pointers that RmlUi invalidates on the next tree
+        /// change, so they are wrapped without taking ownership.
+        /// </summary>
+        private static IReadOnlyList<Element> WrapList(IntPtr list)
+        {
+            if (list == IntPtr.Zero)
+                return Array.Empty<Element>();
+
+            try
+            {
+                int count = Native.Element.ElementListSize(list);
+                if (count <= 0)
+                    return Array.Empty<Element>();
+
+                var result = new List<Element>(count);
+                for (int i = 0; i < count; i++)
+                {
+                    Element? element = WrapOrNull(Native.Element.ElementListGet(list, i));
+                    if (element is not null)
+                        result.Add(element);
+                }
+                return result;
+            }
+            finally
+            {
+                Native.Element.ElementListFree(list);
+            }
+        }
+
+        /// <summary>Wraps a raw element pointer using its concrete managed type, or null.</summary>
+        private static Element? WrapOrNull(IntPtr elementPtr)
+        {
+            if (elementPtr == IntPtr.Zero)
+                return null;
+
+            var typePtr = Native.Element.GetElementTypeName(elementPtr);
+            var elementType = typePtr == IntPtr.Zero ? null : Marshal.PtrToStringAnsi(typePtr);
+            return elementType is null ? null : Util.GetOrThrowElementByTypeName(elementPtr, elementType);
+        }
+
+        #endregion
+
+        #region Geometry
+
+        /// <inheritdoc />
+        public void ScrollIntoView() => Native.Element.ScrollIntoView(NativePtr);
+
+        /// <inheritdoc />
+        public float GetOffsetLeft() => Native.Element.GetOffsetLeft(NativePtr);
+
+        /// <inheritdoc />
+        public float GetOffsetWidth() => Native.Element.GetOffsetWidth(NativePtr);
+
+        /// <inheritdoc />
+        public float GetOffsetHeight() => Native.Element.GetOffsetHeight(NativePtr);
+
+        /// <inheritdoc />
+        public Element? GetOffsetParent() => WrapOrNull(Native.Element.GetOffsetParent(NativePtr));
+
+        /// <inheritdoc />
+        public float GetClientLeft() => Native.Element.GetClientLeft(NativePtr);
+
+        /// <inheritdoc />
+        public float GetClientTop() => Native.Element.GetClientTop(NativePtr);
+
+        /// <inheritdoc />
+        public float GetScrollTop() => Native.Element.GetScrollTop(NativePtr);
+
+        /// <inheritdoc />
+        public float GetScrollWidth() => Native.Element.GetScrollWidth(NativePtr);
+
+        /// <inheritdoc />
+        public float GetScrollHeight() => Native.Element.GetScrollHeight(NativePtr);
+
+        #endregion
 
         public override void Dispose()
         {

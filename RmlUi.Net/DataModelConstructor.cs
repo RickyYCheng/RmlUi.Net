@@ -141,6 +141,23 @@ namespace RmlUiNet {
             return Native.DataModelConstructor.BindString(NativePtr, name, ptr);
         }
 
+        /// <summary>
+        /// Registers a struct type on this data model's type register and returns a handle
+        /// whose members can be bound with <see cref="StructHandle.RegisterMember(string, int)"/>.
+        /// </summary>
+        /// <returns>The struct handle, or null when registration failed.</returns>
+        public StructHandle? RegisterStructHandle(string name) {
+            IntPtr handle = Native.DataModelConstructor.RegisterStruct(NativePtr, name);
+            return handle == IntPtr.Zero ? null : new StructHandle(handle);
+        }
+
+        /// <summary>
+        /// Registers a struct type and returns its native handle truncated to <see cref="int"/>.
+        /// </summary>
+        /// <remarks>
+        /// The handle is a pointer; the truncation loses the upper 32 bits on 64-bit builds, so
+        /// the value is only useful as a truthiness check. Prefer <see cref="RegisterStructHandle"/>.
+        /// </remarks>
         public int RegisterStruct(string name) {
             return (int)Native.DataModelConstructor.RegisterStruct(NativePtr, name);
         }

@@ -47,6 +47,6 @@ namespace RmlUiNet.Native
         internal delegate void OnSetTransform(IntPtr transform);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RenderInterface_Test")]
-        public static extern IntPtr Test(IntPtr renderInterface);
+        public static extern void Test(IntPtr renderInterface);
     }
 }

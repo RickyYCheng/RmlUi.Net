@@ -6,7 +6,7 @@ namespace RmlUiNet.Native
     internal static class ElementDocument
     {
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_Show")]
-        public static extern void Show(IntPtr document, ModalFlag modalFlag, FocusFlag focusFlag);
+        public static extern void Show(IntPtr document, ModalFlag modalFlag, FocusFlag focusFlag, ScrollFlag scrollFlag);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_Hide")]
         public static extern void Hide(IntPtr document);
@@ -30,7 +30,7 @@ namespace RmlUiNet.Native
         public static extern IntPtr CreateTextNode(IntPtr document, string text);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_SetTitle")]
-        public static extern IntPtr SetTitle(IntPtr document, string title);
+        public static extern void SetTitle(IntPtr document, string title);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_GetTitle")]
         public static extern IntPtr GetTitle(IntPtr document);

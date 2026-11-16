@@ -1,5 +1,6 @@
 ﻿#include "RmlNative.h"
 #include "RmlUi/Core/Element.h"
+#include "RmlUi/Core/Types.h"
 #include "ElementPool.h"
 #include "Util.h"
 
@@ -80,8 +81,11 @@ RMLUI_CAPI void rml_Element_SetInnerRml(Rml::Element *element, const char* rml) 
     element->SetInnerRML(rml);
 }
 
-RMLUI_CAPI void rml_Element_Focus(Rml::Element *element) {
-    element->Focus();
+RMLUI_CAPI bool rml_Element_Focus(Rml::Element *element) {
+    if (element == nullptr) {
+        return false;
+    }
+    return element->Focus();
 }
 
 RMLUI_CAPI void rml_Element_Blur(Rml::Element *element) {
@@ -105,6 +109,9 @@ RMLUI_CAPI float rml_Element_GetAbsoluteTop(Rml::Element *element) {
 }
 
 RMLUI_CAPI void rml_Element_SetAttributeString(Rml::Element *element, const char *attr, const char *value) {
+    if (element == nullptr || attr == nullptr || value == nullptr) {
+        return;
+    }
     element->SetAttribute(attr, value);
 }
 
@@ -112,8 +119,11 @@ RMLUI_CAPI const char* rml_Element_GetAttributeString(Rml::Element *element, con
     return RMLUI_DUP_STR(element->GetAttribute<Rml::String>(attr, default_value).c_str());
 }
 
-RMLUI_CAPI void rml_Element_SetProperty(Rml::Element *element, const char *name, const char *value) {
-    element->SetProperty(name, value);
+RMLUI_CAPI bool rml_Element_SetProperty(Rml::Element *element, const char *name, const char *value) {
+    if (element == nullptr || name == nullptr || value == nullptr) {
+        return false;
+    }
+    return element->SetProperty(name, value);
 }
 
 RMLUI_CAPI const Rml::Property* rml_Element_GetProperty(Rml::Element *element, const char *name) {
@@ -155,6 +165,9 @@ RMLUI_CAPI bool rml_Element_IsClassSet(Rml::Element *element, const char* class_
 }
 
 RMLUI_CAPI void rml_Element_SetClass(Rml::Element *element, const char* class_name, bool activate) {
+    if (element == nullptr || class_name == nullptr) {
+        return;
+    }
     element->SetClass(class_name, activate);
 }
 
@@ -315,32 +328,81 @@ RMLUI_CAPI bool rml_Element_HasClass(Rml::Element *element, const char* class_na
 }
 
 RMLUI_CAPI bool rml_Element_InsertBefore(Rml::Element *element, Rml::Element *element_to_add, Rml::Element *adjacent_element) {
-	return element->InsertBefore(Rml::ElementPtr(element_to_add), adjacent_element);
+    if (element == nullptr || element_to_add == nullptr || adjacent_element == nullptr) {
+        return false;
+    }
+
+    // Element::InsertBefore takes an owning ElementPtr. Constructing one directly from a raw
+    // pointer made a second owner for an element that was still attached to its tree, so the
+    // temporary deleted it on return and left the document with a dangling child. Take the
+    // element out of its parent (or the detached-element pool) the same way AppendChild and
+    // ReplaceChild do.
+    Rml::ElementPtr inserted = RmlNative::TakeDetachedElement(element_to_add);
+    if (!inserted) {
+        Rml::Element* parent = element_to_add->GetParentNode();
+        if (parent == nullptr) {
+            return false;
+        }
+        inserted = parent->RemoveChild(element_to_add);
+        if (!inserted) {
+            return false;
+        }
+    }
+
+    // InsertBefore returns the inserted element, or nullptr when the adjacent element is not
+    // a child of this element.
+    return element->InsertBefore(std::move(inserted), adjacent_element) != nullptr;
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_QuerySelector(Rml::Element *element, const char* selector) {
 	return element->QuerySelector(selector);
 }
 
-/*
+// Element-list queries. RmlUi fills a Vector<Element*> that the caller owns, so the list is
+// heap-allocated and handed back as an opaque handle; the managed side reads it through
+// rml_ElementList_* and releases it with rml_ElementList_Free. The previous implementation
+// returned a pointer to a stack local, which the caller then read after the frame was gone.
+RMLUI_CAPI Rml::ElementList* rml_Element_QuerySelectorAll(Rml::Element *element, const char* selector) {
+	if (element == nullptr || selector == nullptr) {
+		return nullptr;
+	}
+	auto* list = new Rml::ElementList();
+	element->QuerySelectorAll(*list, selector);
+	return list;
+}
+
 RMLUI_CAPI Rml::ElementList* rml_Element_GetElementsByTagName(Rml::Element *element, const char* tag) {
-	Rml::ElementList list;
-	element->GetElementsByTagName(list, tag);
-    return &list;
+	if (element == nullptr || tag == nullptr) {
+		return nullptr;
+	}
+	auto* list = new Rml::ElementList();
+	element->GetElementsByTagName(*list, tag);
+	return list;
 }
 
 RMLUI_CAPI Rml::ElementList* rml_Element_GetElementsByClassName(Rml::Element *element, const char* class_name) {
-	Rml::ElementList list;
-	element->GetElementsByClassName(list, class_name);
-    return &list;
+	if (element == nullptr || class_name == nullptr) {
+		return nullptr;
+	}
+	auto* list = new Rml::ElementList();
+	element->GetElementsByClassName(*list, class_name);
+	return list;
 }
 
-RMLUI_CAPI Rml::ElementList* rml_Element_QuerySelectorAll(Rml::Element *element, const char* selector) {
-	Rml::ElementList list;
-	element->QuerySelectorAll(list, selector);
-    return &list;
+RMLUI_CAPI int rml_ElementList_Size(Rml::ElementList* list) {
+	return list == nullptr ? 0 : static_cast<int>(list->size());
 }
-*/
+
+RMLUI_CAPI Rml::Element* rml_ElementList_Get(Rml::ElementList* list, int index) {
+	if (list == nullptr || index < 0 || index >= static_cast<int>(list->size())) {
+		return nullptr;
+	}
+	return (*list)[static_cast<size_t>(index)];
+}
+
+RMLUI_CAPI void rml_ElementList_Free(Rml::ElementList* list) {
+	delete list;
+}
 
 RMLUI_CAPI bool rml_Element_Matches(Rml::Element *element, const char* selector) {
 	return element->Matches(selector);
@@ -355,15 +417,13 @@ RMLUI_CAPI void rml_Element_SetInnerText(Rml::Element *element, const char* text
         return;
     }
 
-    // Remove any existing text nodes.
+    // Drop every child, not just text nodes: the contract is "the element's children become
+    // a single text node". Iterating downwards keeps the indices of the children still to be
+    // visited valid after each removal.
     for (int i = element->GetNumChildren() - 1; i >= 0; --i) {
-        Rml::Element* child = element->GetChild(i);
-        if (child->GetTagName() == "#text") {
-            element->RemoveChild(child);
-        }
+        element->RemoveChild(element->GetChild(i));
     }
 
-    // Append a new text node, if any text was provided.
     Rml::ElementDocument* document = element->GetOwnerDocument();
     if (document == nullptr) {
         return;

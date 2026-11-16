@@ -51,7 +51,7 @@ else()
     set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/libfreetype.a" CACHE FILEPATH "Path to freetype library" FORCE)
 endif()
 
-# The vendored RmlUi submodule is kept pristine at the official tag 6.2. Fork
+# The vendored RmlUi submodule is kept pristine at the official tag 6.3. Fork
 # fixes live as git patches in patches/ and are applied on top at configure
 # time. Each patch is guarded by a reverse-check so repeated configures and
 # already-patched trees stay no-ops.

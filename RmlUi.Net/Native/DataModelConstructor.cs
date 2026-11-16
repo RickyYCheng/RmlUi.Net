@@ -37,6 +37,20 @@ namespace RmlUiNet.Native {
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_DataModelConstructor_RegisterStruct")]
         public static extern IntPtr RegisterStruct(IntPtr instance, string name);
 
+        // Struct member registration. The offsets are byte offsets into the managed struct,
+        // converted to member pointers on the native side.
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_StructHandle_RegisterMemberFloat")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool RegisterStructMemberFloat(IntPtr structHandle, string name, int offset);
+
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_StructHandle_RegisterMemberInt")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool RegisterStructMemberInt(IntPtr structHandle, string name, int offset);
+
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_StructHandle_RegisterMemberString")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        public static extern bool RegisterStructMemberString(IntPtr structHandle, string name, int offset);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_DataModelConstructor_BindVariable")]
         [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool BindVariable(IntPtr instance, string name, IntPtr variable);

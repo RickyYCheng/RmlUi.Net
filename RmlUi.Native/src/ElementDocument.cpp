@@ -6,8 +6,13 @@
 #include "ElementPool.h"
 #include "Pool.h"
 
-RMLUI_CAPI void rml_ElementDocument_Show(Rml::ElementDocument* document, Rml::ModalFlag modal_flag = Rml::ModalFlag::None, Rml::FocusFlag focus_flag = Rml::FocusFlag::Auto) {
-    document->Show(modal_flag, focus_flag);
+// ScrollFlag is new in RmlUi 6.3: showing a document can now scroll the focused element
+// into view. All three flags are passed explicitly so the managed side owns the defaults.
+RMLUI_CAPI void rml_ElementDocument_Show(Rml::ElementDocument* document, Rml::ModalFlag modal_flag, Rml::FocusFlag focus_flag, Rml::ScrollFlag scroll_flag) {
+    if (document == nullptr) {
+        return;
+    }
+    document->Show(modal_flag, focus_flag, scroll_flag);
 }
 
 RMLUI_CAPI void rml_ElementDocument_Hide(Rml::ElementDocument* document) {
