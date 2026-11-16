@@ -114,18 +114,20 @@ namespace RmlUiNet
         Change,
         Submit,
         TabChange,
-        ColumnAdd,
-        RowAdd,
-        RowChange,
-        RowRemove,
-        RowUpdate,
     }
 
+    /// <summary>The phase an event is currently being dispatched in.</summary>
+    /// <remarks>
+    /// The values are bit flags and mirror <c>Rml::EventPhase</c> (see RmlUi's
+    /// <c>Include/RmlUi/Core/Event.h</c>). They must not be renumbered: <see cref="Event.Phase"/> casts
+    /// the native value straight to this enum.
+    /// </remarks>
+    [System.Flags]
     public enum EventPhase
     {
-        None,
-        Capture,
-        Target,
-        Bubble,
+        None = 0,
+        Capture = 1,
+        Target = 2,
+        Bubble = 4,
     }
 }

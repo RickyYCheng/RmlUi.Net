@@ -69,7 +69,14 @@ namespace RmlUiNet
         }
 
         public static bool RemoveContext(string name) {
-            return Native.Rml.RemoveContext(name);
+            bool removed = Native.Rml.RemoveContext(name);
+            if (removed) {
+                // Every element and document in that context has just been destroyed, so the
+                // wrappers cached for their addresses are dangling. Dropping them keeps a later
+                // allocation that reuses an address from being mistaken for the old element.
+                RmlInstanceCache.Instance.Clear();
+            }
+            return removed;
         }
 
         public static void RegisterPlugin(Plugin plugin) {

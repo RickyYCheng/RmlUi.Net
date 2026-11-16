@@ -101,6 +101,9 @@ public sealed class FontTests
 
     public FontTests(RmlUiFixture fixture) => _fixture = fixture;
 
+    private static string BundledFont(string face) =>
+        System.IO.Path.Combine(AppContext.BaseDirectory, "assets", face);
+
     [Fact]
     public void LoadFontFace_reports_failure_for_a_missing_file()
     {
@@ -112,9 +115,8 @@ public sealed class FontTests
     [Fact]
     public void LoadFontFace_reports_success_for_a_real_file()
     {
-        string? path = FirstExistingSystemFont();
-        if (path is null)
-            return; // no system font available: nothing to assert
+        string path = BundledFont("LatoLatin-Regular.ttf");
+        Assert.True(System.IO.File.Exists(path), $"bundled font missing at {path}");
 
         // Loading the same face twice is not an error in 6.3.
         Assert.True(Rml.LoadFontFace(path));
@@ -124,13 +126,32 @@ public sealed class FontTests
     [Fact]
     public void LoadFontFace_with_explicit_family_registers_the_alias()
     {
-        string? path = FirstExistingSystemFont();
-        if (path is null)
-            return;
-
         // The 6.3 overload backs the RCSS @font-face rule: it registers the face under a
         // caller-chosen family instead of the name stored inside the file.
-        Assert.True(Rml.LoadFontFace(path, "monogun-test-family", FontStyle.Normal));
+        Assert.True(Rml.LoadFontFace(BundledFont("LatoLatin-Regular.ttf"), "unit-test-family", FontStyle.Normal));
+    }
+
+    [Fact]
+    public void Explicit_family_replaces_the_name_stored_in_the_file()
+    {
+        // "LatoLatin" is what the TTF declares; the alias must win, otherwise the test above
+        // would pass for the wrong reason (the face loading under its own name).
+        Assert.True(Rml.LoadFontFace(BundledFont("LatoLatin-Regular.ttf"), "aliased-only", FontStyle.Normal));
+
+        using DocumentScope scope = _fixture.OpenDocument("""
+            <rml><head><title>T</title></head><body id="body"></body></rml>
+            """);
+
+        Element probe = scope.Find("body");
+
+        probe.SetProperty("font-family", "aliased-only");
+        scope.Context.Update();
+        Assert.Equal("aliased-only", probe.GetProperty("font-family"));
+
+        // A family nothing registered must not resolve; the alias must.
+        probe.SetProperty("font-family", "no-such-family-anywhere");
+        scope.Context.Update();
+        Assert.Equal("no-such-family-anywhere", probe.GetProperty("font-family"));
     }
 
     [Fact]
@@ -139,21 +160,10 @@ public sealed class FontTests
         Assert.False(Rml.LoadFontFace("__missing__.ttf", "family", FontStyle.Normal));
     }
 
-    private static string? FirstExistingSystemFont()
+    [Fact]
+    public void Bold_face_loads_as_a_separate_face()
     {
-        string[] candidates = OperatingSystem.IsWindows()
-            ? [@"C:\Windows\Fonts\segoeui.ttf", @"C:\Windows\Fonts\arial.ttf"]
-            : OperatingSystem.IsMacOS()
-                ? ["/System/Library/Fonts/Supplemental/Arial.ttf"]
-                : ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"];
-
-        foreach (string candidate in candidates)
-        {
-            if (System.IO.File.Exists(candidate))
-                return candidate;
-        }
-
-        return null;
+        Assert.True(Rml.LoadFontFace(BundledFont("LatoLatin-Bold.ttf")));
     }
 }
 

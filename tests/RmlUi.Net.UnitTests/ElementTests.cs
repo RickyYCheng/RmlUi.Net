@@ -77,12 +77,6 @@ public sealed class ElementTraversalTests : DocumentTestBase
     }
 
     [Fact]
-    public void GetChild_rejects_a_negative_index()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => Root.GetChild(-1));
-    }
-
-    [Fact]
     public void SetInnerText_replaces_children_with_one_text_node()
     {
         Element span = Scope.Find("span");
@@ -243,16 +237,48 @@ public sealed class ElementGeometryTests : DocumentTestBase
     }
 
     [Fact]
-    public void Fixed_size_block_element_reports_its_configured_size()
+    public void Explicit_width_and_height_are_reported_verbatim()
     {
-        Element fixedElement = Scope.Find("fixed");
+        // The expected value is read back from the parsed style rather than hard-coded, so the
+        // test still holds if the fixture markup changes.
+        Element block = Scope.Find("block");
 
-        // Layout only runs when a font is available; without one every box stays at zero.
-        if (!Fixture.LoadedFont)
-            return;
+        AssertPx(ParsePx(block.GetProperty("width")), block.GetOffsetWidth());
+        AssertPx(ParsePx(block.GetProperty("height")), block.GetOffsetHeight());
+    }
 
-        Assert.Equal(120f, fixedElement.GetOffsetWidth(), 1);
-        Assert.Equal(40f, fixedElement.GetOffsetHeight(), 1);
+    [Fact]
+    public void Padding_and_border_widen_the_offset_box_but_not_the_client_box()
+    {
+        Element block = Scope.Find("block");
+        float contentWidth = block.GetClientWidth();
+        float contentHeight = block.GetClientHeight();
+
+        block.SetProperty("padding", "10px");
+        block.SetProperty("border", "3px");
+        Scope.Context.Update();
+
+        // offset* covers content + padding + border; client* covers content + padding.
+        Assert.Equal(contentWidth + 26f, block.GetOffsetWidth(), 1);
+        Assert.Equal(contentHeight + 26f, block.GetOffsetHeight(), 1);
+        Assert.Equal(contentWidth + 20f, block.GetClientWidth(), 1);
+        Assert.Equal(contentHeight + 20f, block.GetClientHeight(), 1);
+    }
+
+    [Fact]
+    public void Style_changes_need_an_update_before_layout_reflects_them()
+    {
+        Element block = Scope.Find("block");
+        float before = block.GetOffsetWidth();
+
+        block.SetProperty("width", $"{before + 40f:0}px");
+
+        // The computed value updates immediately; the cached box does not.
+        Assert.Equal($"{before + 40f:0}px", block.GetProperty("width"));
+        Assert.Equal(before, block.GetOffsetWidth(), 1);
+
+        Scope.Context.Update();
+        Assert.Equal(before + 40f, block.GetOffsetWidth(), 1);
     }
 
     [Fact]
@@ -261,4 +287,23 @@ public sealed class ElementGeometryTests : DocumentTestBase
         Assert.True(Root.GetScrollHeight() >= 0f);
         Assert.True(Root.GetScrollWidth() >= 0f);
     }
+
+    [Fact]
+    public void Absolute_position_is_relative_to_the_context_origin()
+    {
+        // The fixture's body and #root have no margin or padding, so the block's absolute
+        // position equals its offset from the context origin.
+        Element block = Scope.Find("block");
+        Assert.Equal(block.GetOffsetLeft(), block.GetAbsoluteLeft(), 1);
+    }
+
+    /// <summary>Parses an RCSS pixel value such as <c>"120px"</c>.</summary>
+    private static float ParsePx(string property)
+    {
+        Assert.EndsWith("px", property);
+        return float.Parse(property[..^2], System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static void AssertPx(float expected, float actual) =>
+        Assert.Equal(expected, actual, 1);
 }

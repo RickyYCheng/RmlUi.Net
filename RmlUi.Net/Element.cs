@@ -115,6 +115,22 @@ namespace RmlUiNet
         void SetProperty(string propertyName, string value);
         void AddEventListener(string name, Action<Event> action);
         string GetInnerRml();
+
+        /// <summary>
+        /// Sends an event to this element.
+        /// </summary>
+        /// <param name="eventId">The event type name, e.g. <c>"click"</c> or a name registered
+        /// with <see cref="Rml.RegisterEventType"/>.</param>
+        /// <param name="parameters">The event parameters.</param>
+        /// <param name="interruptible">True if <see cref="Event.StopPropagation"/> may stop it.</param>
+        /// <param name="bubbles">True to propagate up the ancestor chain.</param>
+        /// <returns>
+        /// True if the event was <em>not</em> consumed (that is, nothing stopped its propagation),
+        /// false if it was stopped. Note that an event with no listeners also reports true, so this
+        /// is not a delivery check — observe the listener instead.
+        /// </returns>
+        bool DispatchEvent(string eventId, Dictionary<string, object> parameters, bool interruptible, bool bubbles);
+
         Element? GetParentNode();
         void ReplaceChild(Element elementToinsert, Element elementToReplace);
         Element? QuerySelector(string selector);
@@ -246,14 +262,22 @@ namespace RmlUiNet
         {
         }
 
+        /// <summary>
+        /// Two wrappers are equal when they refer to the same native element.
+        /// </summary>
+        /// <remarks>
+        /// This used to compare <see cref="GetInnerRml"/>, which made distinct empty elements
+        /// equal and changed an element's hash whenever its content changed — corrupting any
+        /// <see cref="HashSet{T}"/> or dictionary keyed on elements.
+        /// </remarks>
         public override bool Equals(object? obj)
         {
-            return obj is Element el && el.GetInnerRml() == GetInnerRml();
+            return obj is Element el && el.NativePtr == NativePtr;
         }
 
         public override int GetHashCode()
         {
-            return GetInnerRml().GetHashCode();
+            return NativePtr.GetHashCode();
         }
 
         /// <summary>
@@ -301,7 +325,11 @@ namespace RmlUiNet
 
             public override void ProcessEvent(Event ev)
             {
-                if (_handlers.TryGetValue(ev.Id.ToString().ToLower(), out var handlers))
+                // Dispatch by event type, not by EventId: a type registered through
+                // Rml.RegisterEventType gets an id outside the EventId enum, so ev.Id.ToString()
+                // is a number and would never match a handler registered by name.
+                if (!string.IsNullOrEmpty(ev.Type) &&
+                    _handlers.TryGetValue(ev.Type.ToLowerInvariant(), out var handlers))
                 {
                     handlers.ToList().ForEach(handler => handler.Invoke(ev));
                 }
@@ -353,6 +381,7 @@ namespace RmlUiNet
             Native.Element.RemoveEventListener(NativePtr, name, eventListener.NativePtr, inCapturePhase);
         }
 
+        /// <inheritdoc cref="Element.DispatchEvent(string, Dictionary{string, object}, bool, bool)"/>
         public bool DispatchEvent(string event_id, Dictionary<string, object> parameters, bool interruptible, bool bubbles)
         {
             if (string.IsNullOrEmpty(event_id)) throw new ArgumentNullException("event_id");
@@ -383,10 +412,18 @@ namespace RmlUiNet
         }
 
         /// <summary>
-        /// Get a child element by its ID.
+        /// Finds an element by its ID.
         /// </summary>
-        /// <param name="id">ID of the the child element</param>
-        /// <returns>The child of this element with the given ID, or null if no such child exists.</returns>
+        /// <param name="id">The ID to look for. The special names <c>#self</c>, <c>#parent</c> and
+        /// <c>#document</c> resolve to this element, its parent and its owner document.</param>
+        /// <returns>The matching element, or null if there is none.</returns>
+        /// <remarks>
+        /// Despite being an instance method, this searches the <em>whole owner document</em>, not
+        /// just this element's subtree (RmlUi's <c>Element::GetElementById</c> walks from
+        /// <c>GetOwnerDocument()</c>), and the search is breadth-first, so the shallowest match
+        /// wins when IDs are duplicated. Use <see cref="QuerySelectorAll"/> for subtree-scoped
+        /// lookups.
+        /// </remarks>
         public Element? GetElementById(string id)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentNullException("id");

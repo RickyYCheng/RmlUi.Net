@@ -5,12 +5,20 @@ using System.Runtime.InteropServices;
 namespace RmlUiNet
 {
 
+    /// <summary>
+    /// The propagation phases in which an event type may run its default action.
+    /// </summary>
+    /// <remarks>
+    /// Mirrors <c>Rml::DefaultActionPhase</c> (RmlUi's <c>Include/RmlUi/Core/Event.h</c>), which only
+    /// defines <c>None</c>, <c>Target</c> and <c>TargetAndBubble</c>. RmlUi asserts that the capture
+    /// phase is never part of a default-action phase, so there is deliberately no <c>Capture</c>
+    /// member here either.
+    /// </remarks>
     [Flags]
     public enum DefaultActionPhase : int {
         None = 0,
-        Capture = 1,
         Target = 2,
-        Bubble = 4
+        TargetAndBubble = Target | 4,
     }
 
     public enum ModalFlag

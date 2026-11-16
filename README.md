@@ -13,7 +13,10 @@ based on HTML/CSS. Embedded RmlUi: **6.3**.
   imports (built-in PE/ELF/Mach-O parsers, zero dependencies).
 - `tests/RmlUi.Net.SmokeTests/` — smoke suite exercising every public API.
 - `tests/RmlUi.Net.UnitTests/` — xunit suite for behaviour (element tree,
-  selectors, geometry, data models, input, fonts).
+  selectors, geometry, events, data models, input, fonts, wrapper cache).
+- `KNOWN_ISSUES.md` — vendored-RmlUi behaviours that surprise callers
+  (zero-size layout without a font, non-DOM children, case-sensitive
+  selectors, …), with source references. Worth reading before filing a bug.
 
 ## Prerequisites
 

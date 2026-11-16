@@ -21,6 +21,15 @@
     <ProjectReference Include="..\..\RmlUi.Net\RmlUi.Net.csproj" />
   </ItemGroup>
 
+  <!-- The layout assertions need a font the test run controls: RmlUi collapses every
+       content-sized box to zero when no font-family resolves (see KNOWN_ISSUES.md §1), so
+       relying on a system font would make results machine-dependent. These Lato faces are
+       shipped verbatim from RmlUi's samples under the SIL OFL; see assets/LICENSE.txt. -->
+  <ItemGroup>
+    <None Include="assets\*.ttf" Link="assets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="assets\LICENSE.txt" Link="assets\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The unit tests exercise the P/Invoke surface, so the current platform's native
        library must sit next to the test assembly. RmlNativeArch selects the Windows DLL
        to copy; CI passes x86 for the 32-bit job. -->

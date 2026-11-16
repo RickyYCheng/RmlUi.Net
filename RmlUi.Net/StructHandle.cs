@@ -10,7 +10,8 @@ namespace RmlUiNet
     /// </summary>
     /// <remarks>
     /// The handle is owned by the data model's type register, not by this wrapper: it stays
-    /// valid as long as the data model exists, so <see cref="Dispose"/> does not free it.
+    /// valid as long as the data model exists, so <see cref="RmlBase{T}.Dispose()"/> does not
+    /// free the native handle.
     /// </remarks>
     public sealed class StructHandle : RmlBase<StructHandle>
     {

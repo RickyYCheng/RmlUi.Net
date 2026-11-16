@@ -22,10 +22,13 @@ namespace RmlUi.Net.UnitTests;
 public sealed class RmlUiFixture : IDisposable
 {
     /// <summary>
-    /// A system font the layout engine can use. Without a resolvable <c>font-family</c>
-    /// RmlUi reports every box as zero-sized, so the tests need one loaded.
+    /// The font family the tests use. It is loaded from a TTF that ships with the test
+    /// project, so layout results do not depend on what the host machine has installed.
     /// </summary>
-    public const string FontFamily = "Segoe UI";
+    public const string FontFamily = "LatoLatin";
+
+    /// <summary>Regular and bold faces, both bundled in <c>assets/</c>.</summary>
+    public static readonly string[] BundledFonts = ["LatoLatin-Regular.ttf", "LatoLatin-Bold.ttf"];
 
     private int _nextContext;
 
@@ -42,26 +45,36 @@ public sealed class RmlUiFixture : IDisposable
         Rml.SetSystemInterface(SystemInterface);
         Rml.SetFileInterface(FileInterface);
 
-        LoadedFont = TryLoadSystemFont();
+        LoadedFont = LoadBundledFonts();
+        if (!LoadedFont)
+        {
+            throw new InvalidOperationException(
+                $"Could not load the bundled test fonts from '{Path.Combine(AppContext.BaseDirectory, "assets")}'. " +
+                "Layout assertions depend on them; check that the assets/*.ttf items were copied to the output.");
+        }
     }
 
     public RecordingRenderInterface RenderInterface { get; }
     public SilentSystemInterface SystemInterface { get; }
     public InMemoryFileInterface FileInterface { get; }
 
-    /// <summary>True when a layout-capable font was loaded.</summary>
+    /// <summary>True when the bundled font faces were loaded. Always true after construction.</summary>
     public bool LoadedFont { get; }
 
-    /// <summary>Markup every test can rely on.</summary>
+    /// <summary>
+    /// Markup every test can rely on. <c>#block</c> and <c>#inline</c> exist so geometry
+    /// tests never need to hard-code a size that depends on the font's metrics.
+    /// </summary>
     public const string DefaultMarkup = """
         <rml>
           <head>
             <title>Unit</title>
             <style>
-              body { font-family: 'Segoe UI'; width: 100%; height: 100%; margin: 0; padding: 0; }
+              body { font-family: 'LatoLatin'; width: 100%; height: 100%; margin: 0; padding: 0; }
               #root { display: block; }
               .text { display: block; }
               #fixed { display: block; width: 120px; height: 40px; }
+              #block { display: block; width: 200px; height: 80px; }
             </style>
           </head>
           <body id="body">
@@ -71,6 +84,7 @@ public sealed class RmlUiFixture : IDisposable
               <input id="input" type="text" value="initial"/>
               <button id="button">Press</button>
               <div id="fixed">fixed</div>
+              <div id="block">block</div>
             </div>
           </body>
         </rml>
@@ -98,46 +112,26 @@ public sealed class RmlUiFixture : IDisposable
     }
 
     /// <summary>
-    /// Loads the platform's system UI font. Returns false when none is present, which only
-    /// affects layout-dependent assertions.
+    /// Loads the font faces that ship with the test project. Returns false when they are
+    /// missing from the output directory, which only affects layout-dependent assertions.
     /// </summary>
-    private static bool TryLoadSystemFont()
+    private static bool LoadBundledFonts()
     {
-        foreach (string path in FontCandidates())
+        bool allLoaded = true;
+
+        foreach (string face in BundledFonts)
         {
+            string path = Path.Combine(AppContext.BaseDirectory, "assets", face);
             if (!File.Exists(path))
+            {
+                allLoaded = false;
                 continue;
-
-            try
-            {
-                if (Rml.LoadFontFace(path))
-                    return true;
             }
-            catch (Exception)
-            {
-                // Try the next candidate.
-            }
+
+            allLoaded &= Rml.LoadFontFace(path);
         }
 
-        return false;
-    }
-
-    private static IEnumerable<string> FontCandidates()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            yield return @"C:\Windows\Fonts\segoeui.ttf";
-            yield return @"C:\Windows\Fonts\arial.ttf";
-        }
-        else if (OperatingSystem.IsMacOS())
-        {
-            yield return "/System/Library/Fonts/Supplemental/Arial.ttf";
-        }
-        else
-        {
-            yield return "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-            yield return "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
-        }
+        return allLoaded;
     }
 
     public void Dispose()

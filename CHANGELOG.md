@@ -72,11 +72,62 @@ Also newly bound: `GetNumChildren`, `GetChild`, `GetFirstChild`, `GetLastChild`,
 - `Box.GetPosition`/`GetSize` used to allocate a `V2F` on the native heap per call and
   never free it. They now write into caller-provided floats.
 
+### Event dispatch fixes
+
+- `EventPhase` was renumbered densely (`None, Capture, Target, Bubble` = 0..3) while
+  RmlUi defines it as bit flags (`Capture = 1, Target = 2, Bubble = 4`). Every
+  `Event.Phase` value read from native was therefore reinterpreted: a bubbling event
+  reported `4`, which the managed enum called `(EventPhase)4` — not a member at all.
+  The managed enum now uses the native values.
+- `Element.AddEventListener(string, Action<Event>)` resolved handlers with
+  `ev.Id.ToString()`. Ids allocated by `Rml.RegisterEventType` are numbers, so a
+  **custom event never reached its handler**. Lookup is now by `ev.Type`, which is
+  correct for built-in and custom types alike.
+- `DefaultActionPhase` had a `Capture` member that RmlUi's enum does not define (RmlUi
+  asserts capture is never part of a default-action phase). It is replaced by
+  `TargetAndBubble`, matching `Rml::DefaultActionPhase`.
+- `EventId` no longer lists `ColumnAdd`/`RowAdd`/`RowChange`/`RowRemove`/`RowUpdate`:
+  6.3's `Rml::EventId` ends at `TabChange`, so those members could never be produced.
+- `Element.DispatchEvent` was only declared on `Element<T>`, so it was unreachable
+  through the `Element` interface returned by every query method. It is on the
+  interface now.
+- `Element.Equals`/`GetHashCode` compared `GetInnerRml()`, making distinct empty
+  elements equal and changing an element's hash whenever its content changed. They
+  compare `NativePtr` now.
+
+### Wrapper cache correctness
+
+- `RmlInstanceCache.GetOrCreate` only rebuilt a cached wrapper when the stale entry
+  happened to be an `ElementGeneric`. RmlUi recycles element addresses, so when a
+  released `<select>` address was later used by a `<textarea>` (or any other concrete
+  type) the lookup threw `InvalidCastException`. Any type mismatch now rebuilds the
+  wrapper.
+- `Rml.RemoveContext` clears the wrapper cache: destroying a context destroys every
+  element it owned, and the cached wrappers for those addresses were dangling.
+
+### Documentation
+
+- New `KNOWN_ISSUES.md` documenting the vendored RmlUi behaviours that surprise
+  callers, with file/line references into the submodule: zero-sized layout without a
+  resolvable font, non-DOM children (and `<select>` options being unreachable),
+  `HasClass` vs the `class` attribute, style changes needing a `Context.Update()`,
+  document-wide `GetElementById`, deferred `Close()`, `DispatchEvent`'s return value,
+  case-sensitive selectors and the missing `*` tag query, `<rml>`/`<body>` not being
+  elements, and more.
+
 ### Tests
 
 - New `tests/RmlUi.Net.UnitTests` xunit project covering lifecycle, element
-  traversal, selector queries, geometry, variants, dictionary, fonts, data models and
-  input. Each test gets its own context so documents cannot leak between tests.
+  traversal, selector queries, geometry, variants, dictionary, fonts, data models,
+  input, event dispatch, document structure and the wrapper cache (91 tests). Each
+  test gets its own context so documents cannot leak between tests.
+- Root-caused a flaky test to the wrapper cache bug above rather than papering over
+  it; the suite passes repeatedly (verified over consecutive runs).
+- Layout tests load two Lato faces that ship with the test project (`assets/`,
+  SIL OFL, taken from RmlUi's samples) instead of probing for a system font, so
+  results no longer depend on the host machine. Font tests do the same.
+- Geometry assertions derive their expected values from the parsed style properties
+  rather than hard-coding sizes.
 - The smoke suite gained `Element traversal + queries`, `Font faces` and
   `RmlUi 6.3 additions` cases (26 total).
 - Both test projects copy the current platform's native library next to the test

@@ -71,6 +71,10 @@ jobs:
         if: runner.os == 'macOS'
         run: dotnet tests/RmlUi.Net.SmokeTests/bin/Release/net8.0/RmlUi.Net.SmokeTests.dll
 
+      - name: Run unit tests
+        if: matrix.rid != 'win-x86'
+        run: dotnet test tests/RmlUi.Net.UnitTests/RmlUi.Net.UnitTests.csproj -c Release -warnaserror
+
   pack:
     name: pack
     runs-on: ubuntu-latest
