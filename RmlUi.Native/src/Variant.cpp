@@ -7,6 +7,10 @@ RMLUI_CAPI void rml_Variant_Free(Rml::Variant* variant) {
   delete variant;
 }
 
+RMLUI_CAPI void rml_Variant_Copy(Rml::Variant* destination, const Rml::Variant* source) {
+    *destination = *source;
+}
+
 RMLUI_CAPI Rml::Variant* rml_Variant_CreateInt(int value) {
   return new Rml::Variant(value);
 }

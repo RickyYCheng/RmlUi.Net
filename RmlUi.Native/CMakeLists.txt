@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14...3.23)
+cmake_minimum_required(VERSION 3.21...3.31)
 
 project(RmlUiNative VERSION 1.0 LANGUAGES CXX)
 
@@ -21,8 +21,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # FreeType is vendored and linked statically into RmlUiNative. Disable its
 # optional system dependencies: on CI runners they may be absent, and on macOS
 # the Homebrew builds are arm64-only and cannot satisfy the x86_64 slice of our
-# universal binary. zlib is kept (the SDK's libz is universal) for compressed
-# fonts; freetype falls back to its bundled zlib when no system zlib exists.
+# universal binary. FreeType uses its bundled zlib for compressed fonts.
 # The options must be seeded as CACHE variables with FORCE: freetype's own
 # cmake_minimum_required predates CMake 3.13, so policy CMP0077 is OLD there
 # and its option() calls wipe plain normal variables.
@@ -30,6 +29,7 @@ set(FT_DISABLE_PNG ON CACHE BOOL "Disable PNG support" FORCE)
 set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable HarfBuzz" FORCE)
 set(FT_DISABLE_BROTLI ON CACHE BOOL "Disable Brotli" FORCE)
 set(FT_DISABLE_BZIP2 ON CACHE BOOL "Disable bzip2" FORCE)
+set(FT_DISABLE_ZLIB ON CACHE BOOL "Use FreeType's bundled zlib" FORCE)
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory("ext/freetype")
 
@@ -51,40 +51,26 @@ else()
     set(FREETYPE_LIBRARY "${CMAKE_BINARY_DIR}/bin/libfreetype.a" CACHE FILEPATH "Path to freetype library" FORCE)
 endif()
 
-# The vendored RmlUi submodule is kept pristine at the official tag 6.3. Fork
-# fixes live as git patches in patches/ and are applied on top at configure
-# time. Each patch is guarded by a reverse-check so repeated configures and
-# already-patched trees stay no-ops.
+# Apply the patch in the build tree, not in the shared submodule checkout.
 find_package(Git REQUIRED)
 
-function(apply_rmlui_patch patch_file)
-    execute_process(
-        COMMAND "${GIT_EXECUTABLE}" apply --check --reverse "${patch_file}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/RmlUi"
-        RESULT_VARIABLE patch_already_applied
-        OUTPUT_QUIET ERROR_QUIET
-    )
-    if(NOT patch_already_applied EQUAL 0)
-        execute_process(
-            COMMAND "${GIT_EXECUTABLE}" apply "${patch_file}"
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/RmlUi"
-            RESULT_VARIABLE patch_result
-            OUTPUT_VARIABLE patch_output ERROR_VARIABLE patch_error
-        )
-        if(NOT patch_result EQUAL 0)
-            message(FATAL_ERROR "Failed to apply RmlUi patch ${patch_file}:\n${patch_output}${patch_error}")
-        endif()
-        message(STATUS "Applied RmlUi patch: ${patch_file}")
-    endif()
-endfunction()
-
-file(GLOB RMLUI_PATCHES "${CMAKE_CURRENT_SOURCE_DIR}/patches/*.patch")
+set(RMLUI_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/rmlui-source")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/ext/RmlUi/" DESTINATION "${RMLUI_SOURCE}" PATTERN ".git" EXCLUDE)
+file(GLOB RMLUI_PATCHES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/patches/*.patch")
 list(SORT RMLUI_PATCHES)
+# Read the pinned version so older working copies already patched in place
+# still produce the same source. Only files touched by patches are replaced.
+set(RMLUI_PATCHED_PATH "Source/Core/Elements/WidgetTextInput.cpp")
+execute_process(COMMAND "${GIT_EXECUTABLE}" show "HEAD:${RMLUI_PATCHED_PATH}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ext/RmlUi"
+    OUTPUT_FILE "${RMLUI_SOURCE}/${RMLUI_PATCHED_PATH}" COMMAND_ERROR_IS_FATAL ANY)
 foreach(rmlui_patch IN LISTS RMLUI_PATCHES)
-    apply_rmlui_patch("${rmlui_patch}")
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env "GIT_DIR=${RMLUI_SOURCE}/.patch-only" "${GIT_EXECUTABLE}" apply --ignore-space-change "${rmlui_patch}"
+        WORKING_DIRECTORY "${RMLUI_SOURCE}" COMMAND_ERROR_IS_FATAL ANY)
 endforeach()
 
-add_subdirectory("ext/RmlUi")
+add_subdirectory("${RMLUI_SOURCE}" "${CMAKE_CURRENT_BINARY_DIR}/rmlui")
 
 add_library(${PROJECT_NAME} SHARED
     "src/Context.cpp"

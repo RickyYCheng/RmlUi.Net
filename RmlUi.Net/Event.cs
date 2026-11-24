@@ -24,7 +24,7 @@ namespace RmlUiNet {
             get
             {
                 var ptr = Native.Event.GetEventType(NativePtr);
-                return ptr == IntPtr.Zero ? string.Empty : Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+                return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
             }
         }
 
@@ -81,25 +81,19 @@ namespace RmlUiNet {
             get
             {
                 if (_parameters is not null) return _parameters;
-                _parameters = [];
+                var snapshot = new Dictionary<string, object>(StringComparer.Ordinal);
                 var parameters = Native.Event.GetParameters(NativePtr);
                 var keys = Native.RmlDictionary.RetrieveKeys(parameters);
                 foreach (var key in keys)
                 {
-                    var variant = new Variant(Native.RmlDictionary.Get(parameters, key));
-                    try
-                    {
-                        if (variant?.Value is not null)
-                        {
-                            _parameters.TryAdd(key, variant.Value);
-                        }
-                    }
-                    finally
-                    {
-                        //Native.Variant.Free(variant.NativePtr);
-                    }
+                    var pointer = Native.RmlDictionary.Get(parameters, key);
+                    if (pointer == IntPtr.Zero)
+                        continue;
+                    using var variant = new Variant(pointer);
+                    if (variant.Value is { } value)
+                        snapshot.TryAdd(key, value);
                 }
-                return _parameters;
+                return _parameters = snapshot;
             }
         }
 

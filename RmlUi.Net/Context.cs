@@ -1,17 +1,19 @@
 using RmlUiNet.Input;
 using RmlUiNet.Native;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace RmlUiNet {
     public class Context : RmlBase<Context> {
+        private readonly Dictionary<string, DataModelConstructor> _models = new(StringComparer.Ordinal);
         #region Properties
 
         /// <summary>
         /// Returns the name of the context.
         /// </summary>
-        public string Name => Marshal.PtrToStringAnsi(Native.Context.GetName(NativePtr)) ?? string.Empty;
+        public string Name => Marshal.PtrToStringUTF8(Native.Context.GetName(NativePtr)) ?? string.Empty;
 
         /// <summary>
         /// Returns a hint on whether the mouse is currently interacting with any elements in this context.
@@ -27,7 +29,9 @@ namespace RmlUiNet {
 
         public void Update()
         {
+            Rml.VerifyOutsideCallback();
             Native.Context.Update(NativePtr);
+            Rml.DrainRetired();
         }
 
         public void SetDimensions(int x, int y)
@@ -76,14 +80,20 @@ namespace RmlUiNet {
         }
 
         public void Render() {
+            Rml.VerifyOutsideCallback();
             Native.Context.Render(NativePtr);
         }
 
         public ElementDocument? LoadDocument(string documentPath) {
+            Rml.VerifyOutsideCallback();
+            ArgumentNullException.ThrowIfNull(documentPath);
             return ElementDocument.Create(Native.Context.LoadDocument(NativePtr, documentPath));
         }
 
         public ElementDocument? LoadDocumentFromMemory(string documentRml, string sourceUrl = "[document from memory]") {
+            Rml.VerifyOutsideCallback();
+            ArgumentNullException.ThrowIfNull(documentRml);
+            ArgumentNullException.ThrowIfNull(sourceUrl);
             return ElementDocument.Create(Native.Context.LoadDocumentFromMemory(NativePtr, documentRml, sourceUrl));
         }
 
@@ -164,18 +174,32 @@ namespace RmlUiNet {
         /// <param name="input">The UTF-8 string to send into this context.</param>
         /// <returns>True if the event was not consumed (ie, was prevented from propagating by an element), false if it was.</returns>
         public bool ProcessTextInput(string input) {
+            ArgumentNullException.ThrowIfNull(input);
             return Native.Context.ProcessTextInput(NativePtr, input);
         }
 
         public DataModelConstructor CreateDataModel(string name) {
+            Rml.VerifyOutsideCallback();
+            ArgumentException.ThrowIfNullOrEmpty(name);
             var ptr = Native.Context.CreateDataModel(NativePtr, name);
-            return DataModelConstructor.GetOrCreateCache(ptr, ptr => new DataModelConstructor(ptr)) ?? throw new Exception("Failed to create data model");
+            return AddModel(name, ptr) ?? throw new InvalidOperationException($"Could not create data model '{name}'.");
         }
 
         public DataModelConstructor? GetDataModel(string name)
         {
-            var ptr = Native.Context.GetDataModel(NativePtr, name);
-            return DataModelConstructor.GetOrCreateCache(ptr, ptr => new DataModelConstructor(ptr));
+            Rml.VerifyOutsideCallback();
+            ArgumentException.ThrowIfNullOrEmpty(name);
+            var context = NativePtr;
+            return _models.TryGetValue(name, out var model) ? model : AddModel(name, Native.Context.GetDataModel(context, name));
+        }
+
+        private DataModelConstructor? AddModel(string name, IntPtr ptr)
+        {
+            if (ptr == IntPtr.Zero)
+                return null;
+            var model = new DataModelConstructor(this, name, ptr);
+            _models.Add(name, model);
+            return model;
         }
 
         public Element? GetHoverElement()
@@ -190,7 +214,13 @@ namespace RmlUiNet {
         }
 
         public bool RemoveDataModel(string name) {
-            return Native.Context.RemoveDataModel(NativePtr, name);
+            Rml.VerifyOutsideCallback();
+            ArgumentException.ThrowIfNullOrEmpty(name);
+            if (!Native.Context.RemoveDataModel(NativePtr, name))
+                return false;
+            if (_models.Remove(name, out var model))
+                model.Release();
+            return true;
         }
 
         /// <summary>
@@ -214,11 +244,28 @@ namespace RmlUiNet {
         }
 
         internal static Context? Create(string name, Vector2i dimensions, RenderInterface? renderInterface = null) {
-            return GetOrCreateCache(Native.Context.Create(name, dimensions, renderInterface?.NativePtr ?? IntPtr.Zero), ptr => new Context(ptr));
+            var result = GetOrCreateCache(Native.Context.Create(name, dimensions, renderInterface?.NativePtr ?? IntPtr.Zero), ptr => new Context(ptr));
+            if (result is not null)
+                Rml.RetainRenderer(renderInterface);
+            return result;
         }
 
-        protected override void Dispose(bool disposing) {
-            base.Dispose(disposing);
+        internal void OnNativeDestroyed()
+        {
+            base.Dispose(true);
+            Rml.Retire(() =>
+            {
+                foreach (var model in _models.Values)
+                    model.Release();
+                _models.Clear();
+            });
+        }
+
+        public override void Dispose()
+        {
+            Rml.VerifyOutsideCallback();
+            if (!IsDisposed)
+                Rml.RemoveContext(Name);
         }
 
         #endregion

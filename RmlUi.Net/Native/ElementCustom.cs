@@ -5,7 +5,7 @@ using System.Text;
 namespace RmlUiNet.Native {
     internal static class ElementCustom {
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementCustom_New")]
-        public static extern IntPtr Create(string tagName, OnRender? onRender);
+        public static extern IntPtr Create([MarshalAs(UnmanagedType.LPUTF8Str)] string tagName, OnRender? onRender);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementCustom_Free")]
         public static extern void Free(IntPtr element);

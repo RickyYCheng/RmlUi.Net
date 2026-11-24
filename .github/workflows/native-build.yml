@@ -1,9 +1,9 @@
 name: Native build
-
-# Builds the native RmlUiNative library for every supported platform and
-# uploads the result as an artifact. Reused by ci.yml and release.yml.
 on:
   workflow_call: {}
+
+permissions:
+  contents: read
 
 jobs:
   native:
@@ -13,83 +13,50 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            rid: win-x64
-            arch: x64
-            artifact: RmlUiNative.dll
-          - os: windows-latest
-            rid: win-x86
-            arch: x86
-            artifact: RmlUiNative.dll
-          - os: ubuntu-latest
-            rid: linux-x64
-            arch: ""
-            artifact: libRmlUiNative.so
-          - os: macos-14
-            rid: osx-x64
-            arch: ""
-            artifact: RmlUiNative.dylib
+          - { os: windows-2022, rid: win-x64, arch: x64, library: RmlUiNative.dll }
+          - { os: windows-2022, rid: win-x86, arch: x86, library: RmlUiNative.dll }
+          - { os: ubuntu-22.04, rid: linux-x64, library: libRmlUiNative.so }
+          - { os: macos-15-intel, rid: osx-x64, library: RmlUiNative.dylib }
+          - { os: macos-15, rid: osx-arm64, library: RmlUiNative.dylib }
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          submodules: recursive
-
-      - name: Set up MSVC (Windows)
+          submodules: true
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.arch }}
-
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd
-        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-
-      - name: Configure (Linux)
-        if: runner.os == 'Linux'
-        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-
-      - name: Configure (macOS, universal binary)
-        if: runner.os == 'macOS'
-        run: cmake -S RmlUi.Native -B RmlUi.Native/out/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-
-      - name: Build native
-        run: cmake --build RmlUi.Native/out/build --parallel
-
-      - name: Build managed
-        run: dotnet build RmlUi.Net/RmlUi.Net.csproj -c Release -warnaserror -p:Platform=AnyCPU
-
-      - name: Build export parity tool
-        run: dotnet build tools/RmlUiExportParity/RmlUiExportParity.csproj -c Release -warnaserror -p:Platform=AnyCPU
-
-      - name: Verify export/import parity (blocking)
+      - name: Build native library
         shell: bash
         run: |
-          case "${{ matrix.rid }}" in
-            win-*) NATIVE="RmlUi.Native/out/build/bin/RmlUiNative.dll" ;;
-            linux-*) NATIVE="RmlUi.Native/out/build/bin/libRmlUiNative.so" ;;
-            osx-*) NATIVE="RmlUi.Native/out/build/bin/RmlUiNative.dylib" ;;
-          esac
-          dotnet run --project tools/RmlUiExportParity/RmlUiExportParity.csproj -c Release -p:Platform=AnyCPU -- \
+          args=()
+          if [[ "$RUNNER_OS" == macOS ]]; then args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"); fi
+          cmake -S RmlUi.Native -B RmlUi.Native/out/ci -G Ninja -DCMAKE_BUILD_TYPE=Release "${args[@]}"
+          cmake --build RmlUi.Native/out/ci --parallel
+      - name: Verify managed imports
+        shell: bash
+        run: |
+          dotnet build RmlUi.Net/RmlUi.Net.csproj -c Release -warnaserror
+          dotnet run --project tools/RmlUiExportParity -c Release -- \
             --assembly RmlUi.Net/bin/Release/net8.0/RmlUi.Net.dll \
-            --native "$NATIVE"
-
-      - name: Stage runtime artifact
+            --native "RmlUi.Native/out/ci/bin/${{ matrix.library }}"
+      - name: Stage current platform
         shell: bash
         run: |
-          mkdir -p "RmlUi.Net/runtimes/${{ matrix.rid }}/native"
-          case "${{ matrix.rid }}" in
-            win-*) cp "RmlUi.Native/out/build/bin/RmlUiNative.dll" "RmlUi.Net/runtimes/${{ matrix.rid }}/native/RmlUiNative.dll" ;;
-            linux-*) cp "RmlUi.Native/out/build/bin/libRmlUiNative.so" "RmlUi.Net/runtimes/${{ matrix.rid }}/native/libRmlUiNative.so" ;;
-            osx-*) cp "RmlUi.Native/out/build/bin/RmlUiNative.dylib" "RmlUi.Net/runtimes/${{ matrix.rid }}/native/RmlUiNative.dylib" ;;
-          esac
-
-      - name: Upload native artifact
-        uses: actions/upload-artifact@v4
+          dir="RmlUi.Net/runtimes/${{ matrix.rid }}/native"
+          mkdir -p "$dir"
+          cp "RmlUi.Native/out/ci/bin/${{ matrix.library }}" "$dir/"
+      - name: Run unit tests
+        if: matrix.rid != 'win-x86'
+        run: dotnet test tests/RmlUi.Net.UnitTests -c Release -warnaserror -p:RmlNativeRid=${{ matrix.rid }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: native-${{ matrix.rid }}
-          # Upload the whole runtimes tree so the <rid>/native/ directory
-          # structure is preserved inside the artifact.
-          path: RmlUi.Net/runtimes
+          path: RmlUi.Net/runtimes/
           if-no-files-found: error

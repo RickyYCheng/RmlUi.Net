@@ -7,11 +7,11 @@ namespace RmlUiNet.Native {
         public static extern void DirtyAllVariables(IntPtr instance);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_DataModelHandle_DirtyVariable")]
-        public static extern void DirtyVariable(IntPtr instance, string variable_name);
+        public static extern void DirtyVariable(IntPtr instance, [MarshalAs(UnmanagedType.LPUTF8Str)] string variable_name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_DataModelHandle_IsVariableDirty")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool IsVariableDirty(IntPtr instance, string variable_name);
+        public static extern bool IsVariableDirty(IntPtr instance, [MarshalAs(UnmanagedType.LPUTF8Str)] string variable_name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_DataModelHandle_Free")]
         public static extern void Free(IntPtr instance);

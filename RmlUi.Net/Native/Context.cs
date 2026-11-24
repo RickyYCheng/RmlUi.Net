@@ -6,10 +6,7 @@ namespace RmlUiNet.Native
     internal static class Context
     {
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_New")]
-        public static extern IntPtr Create(string name, Vector2i dimensions, IntPtr renderInterface);
-
-        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_Delete")]
-        public static extern void Delete(IntPtr context);
+        public static extern IntPtr Create([MarshalAs(UnmanagedType.LPUTF8Str)] string name, Vector2i dimensions, IntPtr renderInterface);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_Update")]
         public static extern void Update(IntPtr context);
@@ -27,13 +24,13 @@ namespace RmlUiNet.Native
         public static extern void Render(IntPtr context);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_LoadDocument")]
-        public static extern IntPtr LoadDocument(IntPtr context, string documentPath);
+        public static extern IntPtr LoadDocument(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string documentPath);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_GetHoverElement")]
         public static extern IntPtr GetHoverElement(IntPtr context);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_LoadDocumentFromMemory")]
-        public static extern IntPtr LoadDocumentFromMemory(IntPtr context, string documentRml, string sourceUrl);
+        public static extern IntPtr LoadDocumentFromMemory(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string documentRml, [MarshalAs(UnmanagedType.LPUTF8Str)] string sourceUrl);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_IsMouseInteracting")]
         [return: MarshalAs(UnmanagedType.I1)]
@@ -69,26 +66,26 @@ namespace RmlUiNet.Native
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_ProcessTextInput")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool ProcessTextInput(IntPtr context, string input);
+        public static extern bool ProcessTextInput(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string input);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_AddEventListener")]
-        public static extern void AddEventListener(IntPtr context, string name, IntPtr eventListener, bool inCapturePhase);
+        public static extern void AddEventListener(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr eventListener, [MarshalAs(UnmanagedType.I1)] bool inCapturePhase);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_RemoveEventListener")]
-        public static extern void RemoveEventListener(IntPtr context, string name, IntPtr eventListener, bool inCapturePhase);
+        public static extern void RemoveEventListener(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr eventListener, [MarshalAs(UnmanagedType.I1)] bool inCapturePhase);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_GetName")]
         public static extern IntPtr GetName(IntPtr context);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_CreateDataModel")]
-        public static extern IntPtr CreateDataModel(IntPtr context, string name);
+        public static extern IntPtr CreateDataModel(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_GetDataModel")]
-        public static extern IntPtr GetDataModel(IntPtr context, string name);
+        public static extern IntPtr GetDataModel(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_RemoveDataModel")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool RemoveDataModel(IntPtr context, string name);
+        public static extern bool RemoveDataModel(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Context_GetFocusElement")]
         public static extern IntPtr GetFocusElement(IntPtr context);

@@ -9,6 +9,6 @@ namespace RmlUiNet.Native
         public static extern IntPtr Get(IntPtr property);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Property_GetString")]
-        public static extern IntPtr GetString(IntPtr property, string defaultValue);
+        public static extern IntPtr GetString(IntPtr property, [MarshalAs(UnmanagedType.LPUTF8Str)] string defaultValue);
     }
 }

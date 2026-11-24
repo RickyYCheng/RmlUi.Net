@@ -1,54 +1,65 @@
-﻿# RmlUi.Net
+# RickyYC.RmlUi.Net
 
-C# bindings for [RmlUi](https://github.com/mikke89/RmlUi) — a native UI library
-based on HTML/CSS. Embedded RmlUi: **6.2**.
+Unofficial .NET 8 bindings for [RmlUi 6.3](https://github.com/mikke89/RmlUi).
+This package includes native libraries for Windows x64 and x86, Linux x64
+with glibc, and macOS on Intel and Apple Silicon.
 
-## Supported platforms
+The source is maintained at [RickyYCheng/RmlUi.Net](https://github.com/RickyYCheng/RmlUi.Net),
+a fork of [PourrezJ/RmlUi.Net](https://github.com/PourrezJ/RmlUi.Net), which
+continues [Chorizite/RmlUi.Net](https://github.com/Chorizite/RmlUi.Net).
+Use only one of these packages in the application. The managed assembly and
+native library from different forks or releases are not interchangeable.
 
-| RID | Native file |
-| --- | --- |
-| `win-x64`, `win-x86` | `runtimes/<rid>/native/RmlUiNative.dll` |
-| `linux-x64` | `runtimes/linux-x64/native/libRmlUiNative.so` |
-| `osx-x64` | `runtimes/osx-x64/native/RmlUiNative.dylib` (universal arm64+x86_64) |
-
-## Installation
-
-This package is an independently maintained fork of the upstream
-`Chorizite/RmlUi.Net` project and is published on nuget.org under its own id:
-
-```powershell
-dotnet add package RickyYC.RmlUi.Net
-```
-
-## Quick start
+## Start a context
 
 ```csharp
 using RmlUiNet;
 
-Rml.Initialise();
-
-var context = Rml.CreateContext("main", new Vector2i(1280, 720));
-var document = context.LoadDocumentFromMemory(
-    "<rml><head><title>Hello</title></head><body><p>Hello, RmlUi.Net!</p></body></rml>");
-
-while (running)
+using var renderer = new RenderInterface();
+Rml.SetRenderInterface(renderer);
+try
 {
+    if (!Rml.Initialise())
+        throw new InvalidOperationException("Could not initialise RmlUi.");
+
+    using var context = Rml.CreateContext("main", new Vector2i(1280, 720))
+        ?? throw new InvalidOperationException("Could not create a context.");
+    var document = context.LoadDocumentFromMemory(
+        "<rml><head><title>Hello</title></head><body><div id='main'/></body></rml>")
+        ?? throw new InvalidOperationException("Could not load the document.");
+    document.Show();
     context.Update();
     context.Render();
 }
-
-Rml.Shutdown();
+finally { Rml.Shutdown(); }
 ```
 
-## Version 1.1.0
+The base renderer is headless. To draw on screen, implement `RenderInterface`
+for your graphics backend, load fonts with `Rml.LoadFontFace` before loading
+documents that contain text, and call `Update` and `Render` from your game loop.
 
-Restores the 51 native exports that were missing from 1.0.1 (no more
-`EntryPointNotFoundException`), fixes `Element.SetAttribute`/`SetProperty` for
-empty string values, and ships native builds for all four platforms. See the
-[CHANGELOG](https://github.com/RickyYCheng/RmlUi.Net/blob/main/CHANGELOG.md)
-for details.
+## Ownership and callbacks
 
-## License
+- Use one thread for interface registration, initialization, UI operations and
+  shutdown. Dispose installed adapters and registered plugins or instancers
+  after shutdown. Do not tear down the runtime or a context from inside a callback.
+- `Context.Dispose` removes the context. `DataModelConstructor.Dispose` removes
+  the model from its context. Close a document with `Close`; its native
+  destruction is deferred until the next context update. Do not use wrappers
+  after their objects are destroyed.
+- Removing a child detaches it rather than destroying it. Reattach it or call
+  `Rml.DestroyDetachedElement` to release it before shutdown.
+- `Event` and data-event argument variants are valid for the duration of the
+  callback. Copy any values you need later. Detach a manually managed listener
+  before disposing it. `Rml.CallbackError` reports managed exceptions caught
+  at the native callback boundary.
+- Pointer-based constructors and custom data-binding storage require native
+  lifetime management by the caller. For a custom element instancer, return a
+  new binding-owned `ElementCustom` or `ElementDocument`; the release callback
+  notifies you but does not transfer ownership.
 
-MIT. RmlUi (MIT) and FreeType (FTL/GPLv2) are embedded under their respective
-licenses.
+Load markup, styles and fonts from trusted sources. The default file interface
+accesses the host filesystem and is not a sandbox.
+
+See [third-party notices](https://github.com/RickyYCheng/RmlUi.Net/blob/main/THIRD-PARTY-NOTICES.md)
+for licenses, including the fonts built into the native debugger.

@@ -15,11 +15,15 @@ namespace RmlUiNet
 
         #region Methods
         public ElementDocument() : base(IntPtr.Zero, false) {
+            Rml.RequireInitialised();
+            Rml.VerifyOutsideCallback();
             _isCustomElement = true;
-            _onLoadInlineScript = OnLoadInlineScript;
-            _onLoadExternalScript = OnLoadExternalScript;
+            _onLoadInlineScript = (text, path, line) => Rml.InvokeCallback(() => OnLoadInlineScript(text, path, line));
+            _onLoadExternalScript = path => Rml.InvokeCallback(() => OnLoadExternalScript(path));
 
             NativePtr = Native.ElementDocument.Create(_onLoadInlineScript, _onLoadExternalScript);
+            Lifetime = RmlInstanceCache.Instance.TrackElement(NativePtr);
+            RmlInstanceCache.Instance.RetainElementOwner(NativePtr, this);
         }
 
         protected ElementDocument(IntPtr ptr, bool automaticallyRegisterInCache)
@@ -83,18 +87,12 @@ namespace RmlUiNet
         /// <returns></returns>
         public string GetTitle()
         {
-            var strPtr = Native.ElementDocument.GetTitle(NativePtr);
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Native.Rml.FreeStringBuffer(strPtr);
-            return strValue ?? "";
+            return Util.ReadOwnedUtf8(Native.ElementDocument.GetTitle(NativePtr));
         }
 
         public string GetSourceURL()
         {
-            var strPtr = Native.ElementDocument.GetSourceURL(NativePtr);
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Native.Rml.FreeStringBuffer(strPtr);
-            return strValue ?? "";
+            return Util.ReadOwnedUtf8(Native.ElementDocument.GetSourceURL(NativePtr));
         }
 
         /*
@@ -122,13 +120,20 @@ namespace RmlUiNet
 
         internal static ElementDocument? Create(IntPtr ptr)
         {
+            if (RmlInstanceCache.Instance.GetElementOwner(ptr) is ElementDocument custom)
+                return custom;
             return GetOrCreateCache(ptr, ptr => new ElementDocument(ptr, false));
         }
 
         public override void Dispose()
         {
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
             if (_isCustomElement)
             {
+                if (GetParentNode() is not null)
+                    throw new InvalidOperationException("Do not dispose a document owned by RmlUi.");
                 Native.ElementDocument.Free(NativePtr);
             }
             base.Dispose();

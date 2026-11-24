@@ -11,24 +11,35 @@ namespace RmlUiNet
 
     public class StyleSheetContainer : RmlBase<StyleSheetContainer>
     {
+        private readonly bool _ownsContainer;
         public StyleSheetContainer(IntPtr ptr, bool automaticallyRegisterInCache = false) : base(ptr, automaticallyRegisterInCache)
         {
 
         }
 
         public StyleSheetContainer(string filename) : base(IntPtr.Zero, false) {
+            Rml.RequireInitialised();
+            ArgumentNullException.ThrowIfNull(filename);
             NativePtr = Native.StyleSheetContainer.Create();
-            Native.StyleSheetContainer.LoadStyleSheetContainer(NativePtr, filename);
+            _ownsContainer = true;
+            try { LoadStyleSheetContainer(filename); }
+            catch { Dispose(); throw; }
         }
 
         public void LoadStyleSheetContainer(string filename)
         {
-            Native.StyleSheetContainer.LoadStyleSheetContainer(NativePtr, filename);
+            ArgumentNullException.ThrowIfNull(filename);
+            if (!Native.StyleSheetContainer.LoadStyleSheetContainer(NativePtr, filename))
+                throw new System.IO.IOException($"Could not load stylesheet '{filename}'.");
         }
 
         public override void Dispose()
         {
-            Native.StyleSheetContainer.Free(NativePtr);
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
+            if (_ownsContainer)
+                Native.StyleSheetContainer.Free(NativePtr);
             base.Dispose();
         }
     }

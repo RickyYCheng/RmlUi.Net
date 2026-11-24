@@ -81,8 +81,8 @@ public sealed class DictionaryTests
         }
         finally
         {
-            RmlUiNet.Native.Variant.Free(number.NativePtr);
-            RmlUiNet.Native.Variant.Free(text.NativePtr);
+            number.Dispose();
+            text.Dispose();
             RmlUiNet.Native.RmlDictionary.Free(dictionary);
         }
     }
@@ -249,10 +249,9 @@ public sealed class DataModelTests : IDisposable
     {
         DataModelConstructor model = _scope.Context.CreateDataModel("lifecycle");
         model.BindInt("value", 1);
-        model.Dispose();
-
-        Assert.NotNull(_scope.Context.GetDataModel("lifecycle"));
+        Assert.Same(model, _scope.Context.GetDataModel("lifecycle"));
         Assert.True(_scope.Context.RemoveDataModel("lifecycle"));
+        model.Dispose();
         Assert.Null(_scope.Context.GetDataModel("lifecycle"));
     }
 

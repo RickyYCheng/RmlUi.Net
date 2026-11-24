@@ -6,6 +6,9 @@ namespace RmlUiNet.Native
 {
     internal static class SystemInterface
     {
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_SystemInterface_Free")]
+        public static extern void Free(IntPtr instance);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_SystemInterface_New")]
         public static extern IntPtr Create(OnGetElapsedTime onGetElapsedTime, OnTranslateString onTranslateString, OnLogMessage onLogMessage, OnJoinPath onJoinPath, OnSetMouseCursor onSetMouseCursor, OnSetClipboardText onSetClipboardText, OnGetClipboardText onGetClipboardText, OnActivateKeyboard onActivateKeyboard, OnDeactivateKeyboard onDeactivateKeyboard);
 
@@ -13,22 +16,23 @@ namespace RmlUiNet.Native
         internal delegate double OnGetElapsedTime();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate string OnTranslateString(ref int changeCount, string input);
+        internal delegate int OnTranslateString(IntPtr output, [MarshalAs(UnmanagedType.LPUTF8Str)] string input);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate bool OnLogMessage(LogType type, string message);
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal delegate bool OnLogMessage(LogType type, [MarshalAs(UnmanagedType.LPUTF8Str)] string message);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate string OnJoinPath(string path, string file);
+        internal delegate void OnJoinPath(IntPtr output, [MarshalAs(UnmanagedType.LPUTF8Str)] string path, [MarshalAs(UnmanagedType.LPUTF8Str)] string file);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnSetMouseCursor(string message);
+        internal delegate void OnSetMouseCursor([MarshalAs(UnmanagedType.LPUTF8Str)] string message);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnSetClipboardText(string text);
+        internal delegate void OnSetClipboardText([MarshalAs(UnmanagedType.LPUTF8Str)] string text);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate string OnGetClipboardText();
+        internal delegate void OnGetClipboardText(IntPtr output);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnActivateKeyboard(float caret_x, float caret_y, float line_height);

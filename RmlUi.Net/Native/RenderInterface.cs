@@ -6,6 +6,9 @@ namespace RmlUiNet.Native
 {
     internal unsafe static class RenderInterface
     {
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RenderInterface_Free")]
+        public static extern void Free(IntPtr instance);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RenderInterface_New")]
         public static extern IntPtr Create(
             OnCompileGeometry onCompileGeometry,
@@ -29,7 +32,7 @@ namespace RmlUiNet.Native
         internal delegate void OnReleaseGeometry(IntPtr geometry);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate IntPtr OnLoadTexture(ref Vector2i dimensions, string source);
+        internal delegate IntPtr OnLoadTexture(ref Vector2i dimensions, [MarshalAs(UnmanagedType.LPUTF8Str)] string source);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate IntPtr OnGenerateTexture(byte* source, int numBytes, Vector2i dimensions);
@@ -38,7 +41,7 @@ namespace RmlUiNet.Native
         internal delegate void OnReleaseTexture(IntPtr textureHandle);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnEnableScissorRegion(bool enable);
+        internal delegate void OnEnableScissorRegion([MarshalAs(UnmanagedType.I1)] bool enable);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnSetScissorRegion(int x, int y, int width, int height);

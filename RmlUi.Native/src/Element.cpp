@@ -223,8 +223,18 @@ RMLUI_CAPI Rml::Element* rml_Element_GetParentNode(Rml::Element *element) {
     return element->GetParentNode();
 }
 
+static bool CanAdopt(Rml::Element* parent, Rml::Element* child) {
+    if (!parent || !child || dynamic_cast<Rml::ElementDocument*>(child))
+        return false;
+    for (auto* ancestor = parent; ancestor; ancestor = ancestor->GetParentNode())
+        if (ancestor == child)
+            return false;
+    return true;
+}
+
 RMLUI_CAPI void rml_Element_ReplaceChild(Rml::Element *element, Rml::Element *inserted_element, Rml::Element *replaced_element) {
-    if (element == nullptr || inserted_element == nullptr || replaced_element == nullptr) {
+    if (!CanAdopt(element, inserted_element) || !replaced_element ||
+            replaced_element->GetParentNode() != element || inserted_element == replaced_element) {
         return;
     }
 
@@ -239,7 +249,8 @@ RMLUI_CAPI void rml_Element_ReplaceChild(Rml::Element *element, Rml::Element *in
         inserted = parent->RemoveChild(inserted_element);
     }
 
-    element->ReplaceChild(std::move(inserted), replaced_element);
+    if (inserted)
+        element->ReplaceChild(std::move(inserted), replaced_element);
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_GetPreviousSibling(Rml::Element *element) {
@@ -247,7 +258,8 @@ RMLUI_CAPI Rml::Element* rml_Element_GetPreviousSibling(Rml::Element *element) {
 }
 
 RMLUI_CAPI void rml_Element_RemoveChild(Rml::Element *element, Rml::Element *element_to_remove) {
-    if (element == nullptr || element_to_remove == nullptr) {
+    if (element == nullptr || element_to_remove == nullptr || element_to_remove->GetParentNode() != element ||
+            dynamic_cast<Rml::ElementDocument*>(element_to_remove)) {
         return;
     }
 
@@ -257,6 +269,10 @@ RMLUI_CAPI void rml_Element_RemoveChild(Rml::Element *element, Rml::Element *ele
     if (removed) {
         RmlNative::StoreDetachedElement(std::move(removed));
     }
+}
+
+RMLUI_CAPI bool rml_Element_DestroyDetached(Rml::Element* element) {
+    return bool(RmlNative::TakeDetachedElement(element));
 }
 
 RMLUI_CAPI float rml_Element_GetScrollHeight(Rml::Element *element) {
@@ -272,7 +288,7 @@ RMLUI_CAPI float rml_Element_GetScrollWidth(Rml::Element *element) {
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_AppendChild(Rml::Element *element, Rml::Element *element_to_append, bool add_to_dom) {
-    if (element == nullptr || element_to_append == nullptr) {
+    if (!CanAdopt(element, element_to_append)) {
         return nullptr;
     }
 
@@ -287,7 +303,7 @@ RMLUI_CAPI Rml::Element* rml_Element_AppendChild(Rml::Element *element, Rml::Ele
         appended = parent->RemoveChild(element_to_append);
     }
 
-    return element->AppendChild(std::move(appended), add_to_dom);
+    return appended ? element->AppendChild(std::move(appended), add_to_dom) : nullptr;
 }
 
 RMLUI_CAPI Rml::Element* rml_Element_AppendChildTag(Rml::Element *element, const char* tagName, bool add_to_dom) {
@@ -328,7 +344,8 @@ RMLUI_CAPI bool rml_Element_HasClass(Rml::Element *element, const char* class_na
 }
 
 RMLUI_CAPI bool rml_Element_InsertBefore(Rml::Element *element, Rml::Element *element_to_add, Rml::Element *adjacent_element) {
-    if (element == nullptr || element_to_add == nullptr || adjacent_element == nullptr) {
+    if (!CanAdopt(element, element_to_add) || !adjacent_element ||
+            adjacent_element->GetParentNode() != element || element_to_add == adjacent_element) {
         return false;
     }
 

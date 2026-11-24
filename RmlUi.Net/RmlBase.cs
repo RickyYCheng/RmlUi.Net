@@ -2,6 +2,11 @@ using System;
 
 namespace RmlUiNet
 {
+    internal sealed class NativeLifetime
+    {
+        public bool IsAlive { get; set; } = true;
+    }
+
     public interface IRmlBase
     {
     }
@@ -11,7 +16,23 @@ namespace RmlUiNet
     {
         #region Members
 
-        public IntPtr NativePtr { get; protected set; }
+        private IntPtr _pointer;
+        private bool _disposed;
+        internal NativeLifetime? Lifetime { get; set; }
+        internal IntPtr Identity => _pointer;
+
+        public IntPtr NativePtr
+        {
+            get
+            {
+                Rml.VerifyAccess();
+                ThrowExceptionIfDisposed();
+                if (_pointer == IntPtr.Zero)
+                    throw new InvalidOperationException($"No native object is attached to {GetType().Name}.");
+                return _pointer;
+            }
+            protected set => _pointer = value;
+        }
 
         #endregion
 
@@ -24,11 +45,6 @@ namespace RmlUiNet
             if (automaticallyRegisterInCache) {
                 ManuallyRegisterCache(ptr, this);
             }
-        }
-
-        ~RmlBase()
-        {
-            Dispose(false);
         }
 
         protected static T? GetOrCreateCache(IntPtr ptr, RmlInstanceCache.CreateInstance createInstance)
@@ -51,25 +67,24 @@ namespace RmlUiNet
 
         #region Properties
 
-        public bool IsDisposed { get; private set; }
+        public bool IsDisposed => _disposed || Lifetime?.IsAlive == false;
 
         #endregion
 
         public virtual void Dispose()
         {
+            Rml.VerifyAccess();
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (IsDisposed) {
+            if (_disposed) {
                 return;
             }
 
-            RmlInstanceCache.Instance.Remove(NativePtr);
-
-            IsDisposed = true;
+            RmlInstanceCache.Instance.Remove(_pointer, this);
+            _disposed = true;
         }
 
         protected void ThrowExceptionIfDisposed()

@@ -1,98 +1,55 @@
 name: Release
-
-# Manual release pipeline for the standalone RickyYCheng/RmlUi.Net package
-# (NuGet id: RickyYC.RmlUi.Net). Rebuilds the native libraries on every
-# platform, repacks, pushes to GitHub Packages, creates a GitHub release and
-# publishes to nuget.org via Trusted Publishing (an OIDC policy on nuget.org
-# bound to this workflow file — no API key secrets required).
-#
-# The version is fixed via VersionPrefix in RmlUi.Net/RmlUi.Net.csproj; bump it
-# there and in VERSION below for each release.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact package version to publish
+        type: string
+        required: true
 
-env:
-  VERSION: 1.2.0
+permissions:
+  contents: read
+
+concurrency:
+  group: nuget-release
+  cancel-in-progress: false
 
 jobs:
-  native:
-    name: native
-    uses: ./.github/workflows/native-build.yml
+  verify:
+    if: github.repository == 'RickyYCheng/RmlUi.Net' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
 
-  release:
-    name: release
-    runs-on: ubuntu-latest
-    needs: native
+  publish:
+    needs: verify
+    runs-on: ubuntu-22.04
+    environment: nuget
     permissions:
-      id-token: write  # required for nuget.org trusted publishing (OIDC)
-      packages: write  # GitHub Packages push
-      contents: write  # GitHub release creation
+      id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download native artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
-          pattern: native-*
-          path: RmlUi.Net/runtimes
-          merge-multiple: true
-
-      - name: Verify every platform artifact is present
+          dotnet-version: 10.0.x
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-package-input
+          path: artifacts
+      - name: Confirm candidate identity
         shell: bash
-        run: |
-          for f in \
-            RmlUi.Net/runtimes/win-x64/native/RmlUiNative.dll \
-            RmlUi.Net/runtimes/win-x86/native/RmlUiNative.dll \
-            RmlUi.Net/runtimes/linux-x64/native/libRmlUiNative.so \
-            RmlUi.Net/runtimes/osx-x64/native/RmlUiNative.dylib; do
-            test -f "$f" || { echo "Missing native artifact: $f"; exit 1; }
-          done
-
-      - name: Pack NuGet package
-        run: dotnet pack RmlUi.Net/RmlUi.Net.csproj -c Release -o artifacts
-
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nuget-package
-          path: artifacts/*.nupkg
-          if-no-files-found: error
-
-      - name: Push to GitHub Packages
+        working-directory: artifacts
         env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUESTED: ${{ inputs.version }}
+          VERIFIED: ${{ needs.verify.outputs.version }}
         run: |
-          dotnet nuget add source --username "${{ github.repository_owner }}" --password "$GH_PACKAGES_TOKEN" --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          # Re-running the workflow for an already-published version returns
-          # 409; treat that as success so the pipeline stays re-runnable.
-          dotnet nuget push artifacts/*.nupkg --api-key "$GH_PACKAGES_TOKEN" --source github || echo "GitHub Packages push skipped (package version already exists)."
-
-      - name: NuGet login (OIDC → temporary API key)
-        uses: NuGet/login@v1
-        id: nuget-login
+          test "$REQUESTED" = "$VERIFIED"
+          test -f "RickyYC.RmlUi.Net.$VERIFIED.nupkg"
+          sha256sum --check SHA256SUMS
+      - uses: NuGet/login@ebc737b6fc418a6ca0073cf116ec8dc156d8b81e # v1
+        id: nuget
         with:
-          # nuget.org profile name (not email), matching the Package Owner of
-          # the trusted publishing policy. Store it in repository Variables:
-          # Settings -> Secrets and variables -> Actions -> Variables.
           user: ${{ vars.NUGET_USER }}
-
-      - name: Push to nuget.org
-        run: |
-          dotnet nuget push artifacts/*.nupkg \
-            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
-            --source https://api.nuget.org/v3/index.json
-
-      - name: Create GitHub release
+      - name: Publish verified bytes to NuGet.org
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh release view "v${{ env.VERSION }}" --repo="$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release v${{ env.VERSION }} already exists, skipping creation."
-          else
-            gh release create "v${{ env.VERSION }}" \
-              --repo="$GITHUB_REPOSITORY" \
-              --title="RickyYC.RmlUi.Net v${{ env.VERSION }}" \
-              --generate-notes \
-              artifacts/*.nupkg
-          fi
+          VERSION: ${{ needs.verify.outputs.version }}
+          KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/RickyYC.RmlUi.Net.$VERSION.nupkg" --api-key "$KEY" --source https://api.nuget.org/v3/index.json

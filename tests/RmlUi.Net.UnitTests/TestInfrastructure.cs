@@ -136,15 +136,9 @@ public sealed class RmlUiFixture : IDisposable
 
     public void Dispose()
     {
-        try
-        {
-            Rml.Shutdown();
-        }
-        catch (Exception)
-        {
-            // Shutdown must not mask a test failure.
-        }
-
+        Rml.Shutdown();
+        FileInterface.Dispose();
+        SystemInterface.Dispose();
         RenderInterface.Dispose();
     }
 }

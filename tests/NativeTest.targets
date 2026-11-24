@@ -1,0 +1,17 @@
+<Project>
+  <Target Name="ResolveNativeTestLibrary" BeforeTargets="AssignTargetPaths" Condition="'$(CandidatePackageVersion)' == ''">
+    <PropertyGroup>
+      <RmlNativeRid Condition="'$(RmlNativeArch)' == 'x86' and '$(RmlNativeRid)' == ''">win-x86</RmlNativeRid>
+      <RmlNativeRid Condition="'$(RmlNativeRid)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</RmlNativeRid>
+      <RmlNativeName Condition="$(RmlNativeRid.StartsWith('win-'))">RmlUiNative.dll</RmlNativeName>
+      <RmlNativeName Condition="$(RmlNativeRid.StartsWith('linux-'))">libRmlUiNative.so</RmlNativeName>
+      <RmlNativeName Condition="$(RmlNativeRid.StartsWith('osx-'))">RmlUiNative.dylib</RmlNativeName>
+      <RmlNativePath>$(MSBuildThisFileDirectory)../RmlUi.Net/runtimes/$(RmlNativeRid)/native/$(RmlNativeName)</RmlNativePath>
+    </PropertyGroup>
+    <Error Condition="'$(RmlNativeName)' == '' or !Exists('$(RmlNativePath)')"
+           Text="Build and stage the native test library for $(RmlNativeRid): $(RmlNativePath)" />
+    <ItemGroup>
+      <None Include="$(RmlNativePath)" Link="$(RmlNativeName)" CopyToOutputDirectory="Always" />
+    </ItemGroup>
+  </Target>
+</Project>

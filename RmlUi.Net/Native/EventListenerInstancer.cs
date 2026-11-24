@@ -17,6 +17,6 @@ namespace RmlUiNet.Native
         public static extern void Free(IntPtr eventListenerInstancer);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate IntPtr OnEventListenerInstancer(string value, IntPtr element);
+        internal delegate IntPtr OnEventListenerInstancer([MarshalAs(UnmanagedType.LPUTF8Str)] string value, IntPtr element);
     }
 }

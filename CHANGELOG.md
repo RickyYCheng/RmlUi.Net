@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## 1.3.0-rc.1
+
+- Context and data model wrappers become invalid when their native objects are
+  removed. Use the runtime from one thread and defer teardown until callbacks return.
+- Managed callback failures are reported through `Rml.CallbackError`. Text input,
+  markup and event parameters use UTF-8 on every target.
+- Native libraries use FreeType 2.14.3. The package includes macOS Arm64 and
+  the license notices for embedded dependencies.
+- The release workflow publishes only the package that passed its consumer jobs.
+
 ## 1.2.0 — unreleased
 
 ### Vendored RmlUi upgraded to 6.3

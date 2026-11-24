@@ -26,15 +26,18 @@ namespace RmlUiNet
 
         public RenderInterface() : base(IntPtr.Zero)
         {
-            _onCompileGeometry = CompileGeometry;
-            _onRenderGeometry = RenderGeometry;
-            _onReleaseGeometry = ReleaseGeometry;
-            _onLoadTexture = LoadTexture;
-            _onGenerateTexture = GenerateTexture;
-            _onReleaseTexture = ReleaseTexture;
-            _onEnableScissorRegion = EnableScissorRegion;
-            _onSetScissorRegion = SetScissorRegion;
-            _onSetTransform = SetTransform;
+            Rml.CheckAbi();
+            _onCompileGeometry = (vertices, vertexCount, indices, indexCount) =>
+                Rml.InvokeCallback(() => CompileGeometry(vertices, vertexCount, indices, indexCount), IntPtr.Zero);
+            _onRenderGeometry = (geometry, translation, texture) => Rml.InvokeCallback(() => RenderGeometry(geometry, translation, texture));
+            _onReleaseGeometry = handle => Rml.InvokeCallback(() => ReleaseGeometry(handle));
+            _onLoadTexture = LoadTextureCallback;
+            _onGenerateTexture = (source, bytes, dimensions) =>
+                Rml.InvokeCallback(() => GenerateTexture(source, bytes, dimensions), IntPtr.Zero);
+            _onReleaseTexture = handle => Rml.InvokeCallback(() => ReleaseTexture(handle));
+            _onEnableScissorRegion = enable => Rml.InvokeCallback(() => EnableScissorRegion(enable));
+            _onSetScissorRegion = (x, y, w, h) => Rml.InvokeCallback(() => SetScissorRegion(x, y, w, h));
+            _onSetTransform = transform => Rml.InvokeCallback(() => SetTransform(transform));
 
             NativePtr = Native.RenderInterface.Create(
                 _onCompileGeometry,
@@ -49,6 +52,30 @@ namespace RmlUiNet
             );
 
             ManuallyRegisterCache(NativePtr, this);
+        }
+
+        private IntPtr LoadTextureCallback(ref Vector2i dimensions, string source)
+        {
+            using var scope = Rml.EnterCallback();
+            try { return LoadTexture(ref dimensions, source); }
+            catch (Exception error)
+            {
+                Rml.ReportCallbackError(error);
+                dimensions = default;
+                return IntPtr.Zero;
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (IsDisposed)
+                return;
+            Rml.VerifyOutsideCallback();
+            if (Rml.IsRegistered(this))
+                throw new InvalidOperationException("Shut down RmlUi before disposing a renderer used by it.");
+            if (_onCompileGeometry is not null)
+                Native.RenderInterface.Free(NativePtr);
+            base.Dispose(disposing);
         }
 
         public virtual IntPtr CompileGeometry(Vertex* vertices, int vertexCount, int* indices, int indexCount) {
@@ -66,7 +93,7 @@ namespace RmlUiNet
 
         public virtual IntPtr LoadTexture(ref Vector2i textureDimensions, string source)
         {
-            textureDimensions = new Vector2i(69, 69);
+            textureDimensions = default;
             return IntPtr.Zero;
         }
 

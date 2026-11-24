@@ -30,36 +30,6 @@
     <None Include="assets\LICENSE.txt" Link="assets\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- The unit tests exercise the P/Invoke surface, so the current platform's native
-       library must sit next to the test assembly. RmlNativeArch selects the Windows DLL
-       to copy; CI passes x86 for the 32-bit job. -->
-  <PropertyGroup>
-    <RmlNativeArch Condition="'$(RmlNativeArch)' == ''">x64</RmlNativeArch>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="..\..\RmlUi.Net\runtimes\win-x64\native\RmlUiNative.dll"
-          Link="RmlUiNative.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(RmlNativeArch)' == 'x64' and Exists('..\..\RmlUi.Net\runtimes\win-x64\native\RmlUiNative.dll')" />
-    <None Include="..\..\RmlUi.Net\runtimes\win-x86\native\RmlUiNative.dll"
-          Link="RmlUiNative.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(RmlNativeArch)' == 'x86' and Exists('..\..\RmlUi.Net\runtimes\win-x86\native\RmlUiNative.dll')" />
-    <None Include="..\..\RmlUi.Net\runtimes\linux-x64\native\libRmlUiNative.so"
-          Link="libRmlUiNative.so"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('Linux')) and Exists('..\..\RmlUi.Net\runtimes\linux-x64\native\libRmlUiNative.so')" />
-    <None Include="..\..\RmlUi.Net\runtimes\osx-x64\native\RmlUiNative.dylib"
-          Link="RmlUiNative.dylib"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) and Exists('..\..\RmlUi.Net\runtimes\osx-x64\native\RmlUiNative.dylib')" />
-  </ItemGroup>
-
-  <!-- CopyToOutputDirectory compares timestamps, so a DLL left over from the other
-       architecture would survive a RmlNativeArch switch and fail to load. -->
-  <Target Name="RemoveStaleNativeCopy" BeforeTargets="BeforeBuild">
-    <Delete Files="$(TargetDir)RmlUiNative.dll" Condition="Exists('$(TargetDir)RmlUiNative.dll')" />
-  </Target>
+  <Import Project="../NativeTest.targets" />
 
 </Project>

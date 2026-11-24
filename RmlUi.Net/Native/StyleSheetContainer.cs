@@ -14,6 +14,6 @@ namespace RmlUiNet.Native
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_StyleSheetContainer_LoadStyleSheetContainer")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool LoadStyleSheetContainer(IntPtr container, string path);
+        public static extern bool LoadStyleSheetContainer(IntPtr container, [MarshalAs(UnmanagedType.LPUTF8Str)] string path);
     }
 }

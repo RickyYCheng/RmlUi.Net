@@ -20,13 +20,13 @@ namespace RmlUiNet.Native
         public static extern int Size(IntPtr dict);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_Insert")]
-        public static extern void Insert(IntPtr dict, string prop, IntPtr variant);
+        public static extern void Insert(IntPtr dict, [MarshalAs(UnmanagedType.LPUTF8Str)] string prop, IntPtr variant);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_Remove")]
-        public static extern void Remove(IntPtr dict, string prop);
+        public static extern void Remove(IntPtr dict, [MarshalAs(UnmanagedType.LPUTF8Str)] string prop);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_Get")]
-        public static extern IntPtr Get(IntPtr dict, string prop);
+        public static extern IntPtr Get(IntPtr dict, [MarshalAs(UnmanagedType.LPUTF8Str)] string prop);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Dictionary_GetAllKeys")]
         private static extern IntPtr GetAllKeys(IntPtr map, ref int keyCount);
@@ -52,7 +52,7 @@ namespace RmlUiNet.Native
                 {
                     // Read pointer to each string
                     IntPtr stringPtr = Marshal.ReadIntPtr(keysPtr, IntPtr.Size * i);
-                    keys[i] = Marshal.PtrToStringAnsi(stringPtr) ?? string.Empty;
+                    keys[i] = Marshal.PtrToStringUTF8(stringPtr) ?? string.Empty;
                 }
 
                 return keys;

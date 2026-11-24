@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 namespace RmlUiNet.Native {
 
     internal static class Plugin {
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Plugin_Free")]
+        public static extern void Free(IntPtr instance);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Plugin_New")]
         public static extern IntPtr Create(OnInitialise onInitialise, OnShutdown onShutdown, OnDocumentOpen onDocumentOpen, OnDocumentLoad onDocumentLoad, OnDocumentUnload onDocumentUnload, OnContextCreate onContextCreate, OnContextDestroy onContextDestroy, OnElementCreate onElementCreate, OnElementDestroy onElementDestroy);
 
@@ -19,7 +22,7 @@ namespace RmlUiNet.Native {
         internal delegate void OnShutdown();
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnDocumentOpen(IntPtr context, string documentPath);
+        internal delegate void OnDocumentOpen(IntPtr context, [MarshalAs(UnmanagedType.LPUTF8Str)] string documentPath);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnDocumentLoad(IntPtr document);

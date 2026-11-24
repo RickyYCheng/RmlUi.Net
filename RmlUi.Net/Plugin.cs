@@ -18,15 +18,15 @@ namespace RmlUiNet {
         private Native.Plugin.OnElementDestroy _onElementDestroy;
 
         public Plugin() : base(IntPtr.Zero) {
-            _onInitialise = OnInitialise;
-            _onShutdown = OnShutdown;
-            _onDocumentOpen = OnDocumentOpenInternal;
-            _onDocumentLoad = OnDocumentLoadInternal;
-            _onDocumentUnload = OnDocumentUnloadInternal;
-            _onContextCreate = OnContextCreateInternal;
-            _onContextDestroy = OnContextDestroyInternal;
-            _onElementCreate = OnElementCreateInternal;
-            _onElementDestroy = OnElementDestroyInternal;
+            _onInitialise = () => Rml.InvokeCallback(OnInitialise);
+            _onShutdown = () => Rml.InvokeCallback(OnShutdown);
+            _onDocumentOpen = (ptr, path) => Rml.InvokeCallback(() => OnDocumentOpenInternal(ptr, path));
+            _onDocumentLoad = ptr => Rml.InvokeCallback(() => OnDocumentLoadInternal(ptr));
+            _onDocumentUnload = ptr => Rml.InvokeCallback(() => OnDocumentUnloadInternal(ptr));
+            _onContextCreate = ptr => Rml.InvokeCallback(() => OnContextCreateInternal(ptr));
+            _onContextDestroy = ptr => Rml.InvokeCallback(() => OnContextDestroyInternal(ptr));
+            _onElementCreate = ptr => Rml.InvokeCallback(() => OnElementCreateInternal(ptr));
+            _onElementDestroy = ptr => Rml.InvokeCallback(() => OnElementDestroyInternal(ptr));
 
             NativePtr = Native.Plugin.Create(
                 _onInitialise,
@@ -96,7 +96,9 @@ namespace RmlUiNet {
         }
 
         internal virtual void OnContextDestroyInternal(IntPtr contextPtr) {
-            OnContextDestroy(RmlInstanceCache.Instance.GetOrCreate<Context>(contextPtr, contextPtr => new Context(contextPtr)));
+            var lifetime = new NativeLifetime();
+            try { OnContextDestroy(new Context(contextPtr) { Lifetime = lifetime }); }
+            finally { lifetime.IsAlive = false; }
         }
 
         internal virtual void OnElementCreateInternal(IntPtr elementPtr) {
@@ -104,7 +106,20 @@ namespace RmlUiNet {
         }
 
         internal virtual void OnElementDestroyInternal(IntPtr elementPtr) {
-            OnElementDestroy(new ElementGeneric(elementPtr, false));
+            var lifetime = new NativeLifetime();
+            try { OnElementDestroy(new ElementGeneric(elementPtr, false, track: false) { Lifetime = lifetime }); }
+            finally { lifetime.IsAlive = false; }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (IsDisposed)
+                return;
+            Rml.VerifyOutsideCallback();
+            if (Rml.IsRegistered(this))
+                throw new InvalidOperationException("Shut down RmlUi before disposing a registered plugin.");
+            Native.Plugin.Free(NativePtr);
+            base.Dispose(disposing);
         }
     }
 }

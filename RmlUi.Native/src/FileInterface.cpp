@@ -6,9 +6,9 @@
 
 typedef Rml::FileHandle(*onOpen)(const char* path);
 typedef void(*onClose)(Rml::FileHandle file);
-typedef const char* (*onLoadFile)(const char* path);
-typedef size_t(*onRead)(char* buffer, unsigned int size, Rml::FileHandle file);
-typedef bool(*onSeek)(Rml::FileHandle file, unsigned int offset, unsigned int origin);
+typedef bool(*onLoadFile)(Rml::String* output, const char* path);
+typedef size_t(*onRead)(char* buffer, size_t size, Rml::FileHandle file);
+typedef bool(*onSeek)(Rml::FileHandle file, int64_t offset, int origin);
 typedef size_t(*onTell)(Rml::FileHandle file);
 typedef size_t(*onLength)(Rml::FileHandle file);
 
@@ -50,7 +50,7 @@ public:
 	}
 
 	size_t Read(void* buffer, size_t size, Rml::FileHandle file) override {
-		return (*m_onRead)((char*)buffer, static_cast<unsigned int>(size), file);
+		return (*m_onRead)(static_cast<char*>(buffer), size, file);
 	}
 
 	bool Seek(Rml::FileHandle file, long offset, int origin) override {
@@ -66,8 +66,9 @@ public:
 	}
 
 	bool LoadFile(const Rml::String& path, Rml::String& out_data) override {
-		out_data = (*m_onLoadFile)(path.c_str());
-		return (out_data != "");
+		if ((*m_onLoadFile)(&out_data, path.c_str()))
+			return true;
+		return Rml::FileInterface::LoadFile(path, out_data);
 	}
 };
 
@@ -90,3 +91,5 @@ RMLUI_CAPI void* rml_FileInterface_New(
 		onLength
 	);
 }
+
+RMLUI_CAPI void rml_FileInterface_Free(FileInterface* instance) { delete instance; }

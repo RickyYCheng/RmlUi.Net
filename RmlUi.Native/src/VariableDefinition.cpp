@@ -2,7 +2,7 @@
 #include "RmlUi/Core/DataVariable.h"
 #include <string>
 
-typedef bool(*onGet)(void* ptr, Rml::Variant*& variant);
+typedef bool(*onGet)(void* ptr, Rml::Variant* variant);
 typedef bool(*onSet)(void* ptr, const Rml::Variant& variant);
 typedef int(*onSize)(void* ptr);
 typedef Rml::DataVariable*(*onChild)(void* ptr, const char* name, int offset);
@@ -23,10 +23,7 @@ public:
     }
 
     bool Get(void* ptr, Rml::Variant& variant) override {
-      Rml::Variant* variant_ptr = &variant;
-      auto res = (*m_onGet)(ptr, variant_ptr);
-      variant = *variant_ptr;
-      return res;
+        return (*m_onGet)(ptr, &variant);
     }
 
     bool Set(void* ptr, const Rml::Variant& variant) override {
@@ -38,7 +35,8 @@ public:
     }
 
     Rml::DataVariable Child(void* ptr, const Rml::DataAddressEntry& address) override {
-        return *(*m_onChild)(ptr, address.name.c_str(), address.index);
+        auto* child = (*m_onChild)(ptr, address.name.c_str(), address.index);
+        return child ? *child : Rml::DataVariable();
     }
 };
 

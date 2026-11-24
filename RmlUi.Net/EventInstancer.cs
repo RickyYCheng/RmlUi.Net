@@ -14,10 +14,14 @@ namespace RmlUiNet
 
         public EventInstancer() : base(IntPtr.Zero)
         {
-            _onInstanceEvent = OnInstanceEventInternal;
+            Rml.RequireInitialised();
+            Rml.VerifyOutsideCallback();
+            _onInstanceEvent = (element, type, id, name, args, interruptible) =>
+                Rml.InvokeCallback(() => OnInstanceEventInternal(element, type, id, name, args, interruptible));
 
             NativePtr = Native.EventInstancer.Create(_onInstanceEvent);
             ManuallyRegisterCache(NativePtr, this);
+            Rml.RetainInstancer(this);
         }
 
         public abstract void OnInstanceEvent(Element element, EventId id, string name, Dictionary<string, object> parameters, bool interruptible);
@@ -37,7 +41,7 @@ namespace RmlUiNet
             OnInstanceEvent(new ElementGeneric(element, false), eventId, name, _parameters, interruptible);
             foreach (var key in _parameters.Keys.Except(keys)) {
                 var value = _parameters[key];
-                var variant = Util.ToVariant(value);
+                using var variant = Util.ToVariant(value);
                 if (variant is not null) {
                     Native.RmlDictionary.Insert(parameters, key, variant.NativePtr);
                 }
@@ -46,6 +50,11 @@ namespace RmlUiNet
 
         public override void Dispose()
         {
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
+            if (Rml.IsRegistered(this))
+                throw new InvalidOperationException("Shut down RmlUi before disposing a registered instancer.");
             Native.EventInstancer.Free(NativePtr);
             base.Dispose();
         }

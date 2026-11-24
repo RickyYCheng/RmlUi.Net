@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using RmlUiNet;
 using RmlUiNet.Input;
@@ -112,6 +113,8 @@ namespace RmlUi.Net.SmokeTests
             {
                 Run("Cleanup (remove context, shutdown)", TestCleanup);
             }
+            if (limit == int.MaxValue)
+                Run("Runtime restart invalidates previous handles", TestRestart);
 
             Console.WriteLine();
             Console.WriteLine($"Passed: {_passCount}, Failed: {_failCount}");
@@ -371,12 +374,11 @@ namespace RmlUi.Net.SmokeTests
             public override IntPtr OnInstanceElement(RmlUiNet.Element parent, string tag, XMLAttributes attributes)
             {
                 Instanced++;
-                return Native.ElementCustom.Create(tag, null);
+                return new TestCustomElement(tag).NativePtr;
             }
 
             public override void OnReleaseElement(RmlUiNet.Element element)
             {
-                Native.ElementCustom.Free(element.NativePtr);
             }
         }
 
@@ -492,8 +494,8 @@ namespace RmlUi.Net.SmokeTests
                 }
                 finally
                 {
-                    Native.Variant.Free(intVariant.NativePtr);
-                    Native.Variant.Free(stringVariant.NativePtr);
+                    intVariant.Dispose();
+                    stringVariant.Dispose();
                 }
             }
             finally
@@ -723,7 +725,7 @@ namespace RmlUi.Net.SmokeTests
                 }
                 finally
                 {
-                    Native.Variant.Free(value.NativePtr);
+                    value.Dispose();
                 }
             }
             finally
@@ -743,7 +745,6 @@ namespace RmlUi.Net.SmokeTests
             finally
             {
                 model.Dispose();
-                _context.RemoveDataModel("smoke_struct_members");
             }
         }
 
@@ -934,7 +935,6 @@ namespace RmlUi.Net.SmokeTests
             var dataModel = _context!.CreateDataModel("smoke_model_2");
             try
             {
-                // rml_DataModelConstructor_BindStringArray / UnbindStringArray (missing in 1.0.1).
                 string[] strings = { "alpha", "beta" };
                 IntPtr[] stringPointers = new IntPtr[strings.Length];
                 IntPtr arrayPtr = Marshal.AllocHGlobal(IntPtr.Size * strings.Length);
@@ -947,7 +947,6 @@ namespace RmlUi.Net.SmokeTests
                     }
 
                     Assert(Native.DataModelConstructor.BindStringArray(dataModel.NativePtr, "arr", arrayPtr, strings.Length), "BindStringArray");
-                    Assert(Native.DataModelConstructor.UnbindStringArray(dataModel.NativePtr, "arr"), "UnbindStringArray");
                 }
                 finally
                 {
@@ -959,8 +958,8 @@ namespace RmlUi.Net.SmokeTests
                 }
 
                 // rml_DataModelConstructor_RegisterStruct (missing in 1.0.1).
-                int structId = dataModel.RegisterStruct("smoke_struct");
-                Assert(structId != 0, "RegisterStruct returned zero");
+                using var structId = dataModel.RegisterStructHandle("smoke_struct");
+                Assert(structId is not null, "RegisterStructHandle returned null");
                 IntPtr structHandle = Native.DataModelConstructor.RegisterStruct(dataModel.NativePtr, "smoke_struct");
                 Assert(structHandle != IntPtr.Zero, "RegisterStruct returned null handle");
             }
@@ -972,27 +971,47 @@ namespace RmlUi.Net.SmokeTests
 
         private static void TestDataModelVariable()
         {
-            var dataModel = _context!.CreateDataModel("smoke_model_3");
-            try
+            using var definition = new TestVariableDefinition();
+            using (var dataModel = _context!.CreateDataModel("smoke_model_3"))
             {
-                var definition = new TestVariableDefinition();
-                var dataVariable = new DataVariable(definition, IntPtr.Zero);
+                using var dataVariable = new DataVariable(definition, IntPtr.Zero);
                 Assert(dataModel.BindVariable("custom", dataVariable), "BindVariable");
 
-                bool callbackFired = false;
-                Assert(dataModel.BindEventCallback("on_change", (ev, variants) => callbackFired = true), "BindEventCallback");
-                Assert(!callbackFired, "event callback fired unexpectedly");
-
+                Event? retainedEvent = null;
+                Variant? retainedVariant = null;
+                object? passedValue = null;
+                Assert(dataModel.BindEventCallback("on_change", (ev, values) =>
+                {
+                    retainedEvent = ev;
+                    retainedVariant = values.Single();
+                    passedValue = retainedVariant.Value;
+                }), "BindEventCallback");
+                Assert(!dataModel.BindEventCallback("on_change", (_, _) => { }), "Duplicate callback must be rejected");
                 dataModel.Handle.DirtyVariable("custom");
-                dataVariable.Dispose();
-            }
-            finally
-            {
-                dataModel.Dispose();
+
+                using var doc = _context.LoadDocumentFromMemory("""
+                    <rml><head/><body><div data-model="smoke_model_3">
+                      <button id="change" data-event-click="on_change('界面')">{{custom}}</button>
+                    </div></body></rml>
+                    """, "smoke-model.rml") ?? throw new InvalidOperationException("Data model document failed to load.");
+                doc.Show();
+                _context.Update();
+                try
+                {
+                    doc.GetElementById("change")!.Click();
+                    AssertEqual("界面", passedValue as string, "Value from model callback");
+                    Assert(retainedEvent is { IsDisposed: true }, "Retained callback event survived");
+                    Assert(retainedVariant is { IsDisposed: true }, "Retained callback argument survived");
+                }
+                finally
+                {
+                    doc.Close();
+                    _context.Update();
+                }
             }
 
-            Assert(_context.GetDataModel("smoke_model_3") is not null, "GetDataModel should return the model still owned by the context");
-            Assert(_context.RemoveDataModel("smoke_model_3"), "RemoveDataModel should return true");
+            Assert(_context.GetDataModel("smoke_model_3") is null, "Dispose should remove the model");
+            Assert(!_context.RemoveDataModel("smoke_model_3"), "Dispose should remove the model");
         }
 
         private static void TestDebugger()
@@ -1089,6 +1108,24 @@ namespace RmlUi.Net.SmokeTests
             Assert(Win32.DestroyWindow(hwnd), "DestroyWindow failed");
         }
 
+        private static void TestRestart()
+        {
+            Rml.Shutdown();
+            for (int i = 0; i < 2; i++)
+            {
+                using var render = new RenderInterface();
+                Rml.SetRenderInterface(render);
+                Assert(Rml.Initialise(), "restart failed");
+                try
+                {
+                    using var context = Rml.CreateContext("restart", new Vector2i(64, 64));
+                    Assert(context is not null, "context creation after restart failed");
+                    context!.Update();
+                }
+                finally { Rml.Shutdown(); }
+            }
+        }
+
         private static void TestCleanup()
         {
             if (_document is not null)
@@ -1105,7 +1142,7 @@ namespace RmlUi.Net.SmokeTests
                 _context = null;
             }
 
-            Rml.RemoveContext("smoke");
+            Rml.Shutdown();
 
             if (_plugin is not null)
             {
@@ -1116,8 +1153,6 @@ namespace RmlUi.Net.SmokeTests
             _renderInterface?.Dispose();
             _systemInterface?.Dispose();
             _fileInterface?.Dispose();
-
-            Rml.Shutdown();
 
             // Free the instancers only after shutdown: Rml::Factory holds raw pointers to
             // them for the whole lifetime of the library.

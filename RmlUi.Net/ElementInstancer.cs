@@ -11,12 +11,16 @@ namespace RmlUiNet {
         private Native.ElementInstancer.OnReleaseElement _onReleaseElement;
 
         public ElementInstancer(string tag) : base(IntPtr.Zero) {
-            _onInstanceElement = OnInstanceElementInternal;
-            _onReleaseElement = OnReleaseElementInternal;
+            Rml.RequireInitialised();
+            Rml.VerifyOutsideCallback();
+            ArgumentException.ThrowIfNullOrEmpty(tag);
+            _onInstanceElement = (parent, name, attributes) => Rml.InvokeCallback(() => OnInstanceElementInternal(parent, name, attributes), IntPtr.Zero);
+            _onReleaseElement = ptr => Rml.InvokeCallback(() => OnReleaseElementInternal(ptr));
 
             NativePtr = Native.ElementInstancer.Create(tag, _onInstanceElement, _onReleaseElement);
 
             ManuallyRegisterCache(NativePtr, this);
+            Rml.RetainInstancer(this);
         }
 
         public abstract IntPtr OnInstanceElement(Element parent, string tag, XMLAttributes attributes);
@@ -24,12 +28,24 @@ namespace RmlUiNet {
         public abstract void OnReleaseElement(Element element);
 
         internal virtual IntPtr OnInstanceElementInternal(IntPtr parentElement, string tag, IntPtr xmlAttributes) {
-            var el = OnInstanceElement(new ElementGeneric(parentElement, false), tag, new XMLAttributes(xmlAttributes, false));
-            return el;
+            using var attributes = new XMLAttributes(xmlAttributes, false);
+            return OnInstanceElement(new ElementGeneric(parentElement, false), tag, attributes);
         }
 
         internal virtual void OnReleaseElementInternal(IntPtr elementPtr) {
-            OnReleaseElement(new ElementGeneric(elementPtr, false));
+            using var element = new ElementGeneric(elementPtr, false, track: false);
+            OnReleaseElement(element);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (IsDisposed)
+                return;
+            Rml.VerifyOutsideCallback();
+            if (Rml.IsRegistered(this))
+                throw new InvalidOperationException("Shut down RmlUi before disposing a registered instancer.");
+            Native.ElementInstancer.Free(NativePtr);
+            base.Dispose(disposing);
         }
     }
 }

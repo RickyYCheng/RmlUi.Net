@@ -15,13 +15,21 @@ namespace RmlUiNet
 
         public unsafe FileInterface() : base(IntPtr.Zero)
         {
-            _onOpen = Open;
-            _onClose = Close;
+            Rml.CheckAbi();
+            _onOpen = path => Rml.InvokeCallback(() => Open(path), IntPtr.Zero);
+            _onClose = file => Rml.InvokeCallback(() => Close(file));
             _onRead = _Read;
-            _onSeek = Seek;
-            _onTell = Tell;
-            _onLength = Length;
-            _onLoadFile = LoadFile;
+            _onSeek = (file, offset, origin) => Rml.InvokeCallback(() => SeekSigned(file, offset, origin), false);
+            _onTell = file => Rml.InvokeCallback(() => checked((nuint)Tell(file)), (nuint)0);
+            _onLength = file => Rml.InvokeCallback(() => checked((nuint)Length(file)), (nuint)0);
+            _onLoadFile = (output, path) => Rml.InvokeCallback(() =>
+            {
+                string data = LoadFile(path);
+                if (string.IsNullOrEmpty(data))
+                    return false;
+                Native.Rml.UpdateString(output, data);
+                return true;
+            }, false);
 
             NativePtr = Native.FileInterface.Create(
                 _onOpen,
@@ -36,13 +44,34 @@ namespace RmlUiNet
             ManuallyRegisterCache(NativePtr, this);
         }
 
-        internal unsafe ulong _Read(byte* buffer, uint size, IntPtr file)
+        internal unsafe nuint _Read(byte* buffer, nuint size, IntPtr file)
         {
-            var len = Read(size, file, out byte[] bytes);
+            using var scope = Rml.EnterCallback();
+            try
+            {
+                var len = Read(size, file, out byte[] bytes);
+                if (len == 0)
+                    return 0;
+                if (buffer == null || bytes is null || len > size || len > (ulong)bytes.Length)
+                    throw new InvalidOperationException("The file reader returned an invalid byte count.");
+                Marshal.Copy(bytes, 0, (IntPtr)buffer, (int)len);
+                return (nuint)len;
+            }
+            catch (Exception error) { Rml.ReportCallbackError(error); return 0; }
+        }
 
-            Marshal.Copy(bytes, 0, (IntPtr)buffer, (int)len);
+        protected virtual bool SeekSigned(IntPtr file, long offset, int origin) =>
+            offset >= 0 && offset <= uint.MaxValue && Seek(file, (uint)offset, origin);
 
-            return len;
+        protected override void Dispose(bool disposing)
+        {
+            if (IsDisposed)
+                return;
+            Rml.VerifyOutsideCallback();
+            if (Rml.IsRegistered(this))
+                throw new InvalidOperationException("Shut down RmlUi or replace the installed file interface before disposing it.");
+            Native.FileInterface.Free(NativePtr);
+            base.Dispose(disposing);
         }
 
         public abstract IntPtr Open(string path);

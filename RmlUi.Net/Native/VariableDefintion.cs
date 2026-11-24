@@ -11,15 +11,17 @@ namespace RmlUiNet.Native {
         public static extern void Free(IntPtr instance);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate bool OnGet(IntPtr ptr, ref IntPtr variant);
+        [return: MarshalAs(UnmanagedType.I1)]
+        public delegate bool OnGet(IntPtr ptr, IntPtr variant);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [return: MarshalAs(UnmanagedType.I1)]
         public delegate bool OnSet(IntPtr ptr, IntPtr variant);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int OnSize(IntPtr ptr);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate IntPtr OnChild(IntPtr ptr, string name, int index);
+        public delegate IntPtr OnChild(IntPtr ptr, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int index);
     }
 }

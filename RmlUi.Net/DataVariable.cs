@@ -15,17 +15,34 @@ namespace RmlUiNet {
         }
 
         public DataVariable(VariableDefinition definition, IntPtr data = 0) : base(IntPtr.Zero) {
-            Definition = definition;
-            NativePtr = Native.DataVariable.Create(Definition.NativePtr, data);
+            Initialise(definition, data);
         }
 
         protected void CreateNative(VariableDefinition definition) {
+            Initialise(definition, IntPtr.Zero);
+        }
+
+        private void Initialise(VariableDefinition definition, IntPtr data)
+        {
+            Rml.VerifyAccess();
+            ThrowExceptionIfDisposed();
+            ArgumentNullException.ThrowIfNull(definition);
+            if (Identity != IntPtr.Zero)
+                throw new InvalidOperationException("The variable already has a native definition.");
+            NativePtr = Native.DataVariable.Create(definition.NativePtr, data);
             Definition = definition;
-            NativePtr = Native.DataVariable.Create(Definition.NativePtr, IntPtr.Zero);
+            Definition.Retain();
         }
 
         public override void Dispose() {
-            Native.DataVariable.Free(NativePtr);
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
+            if (Identity != IntPtr.Zero)
+            {
+                Native.DataVariable.Free(NativePtr);
+                Definition.Release();
+            }
             base.Dispose();
         }
     }

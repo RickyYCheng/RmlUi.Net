@@ -2,6 +2,7 @@
 #include "RmlUi/Core.h"
 #include "RmlUi/Core/ElementInstancer.h"
 #include "Util.h"
+#include "ElementPool.h"
 
 typedef Rml::Element*(*instanceElement)(Rml::Element *parent, const char *tag, const Rml::Dictionary &attributes);
 typedef void(*releaseElement)(Rml::Element *element);
@@ -19,11 +20,12 @@ public:
     }
 
 	Rml::ElementPtr InstanceElement(Rml::Element* parent, const Rml::String& tag, const Rml::XMLAttributes& attributes) override {
-      return Rml::ElementPtr((*m_instanceElement)(parent, tag.c_str(), attributes));
+      return RmlNative::TakeBindingElement((*m_instanceElement)(parent, tag.c_str(), attributes));
     }
 
 	void ReleaseElement(Rml::Element* element) override {
       (*m_releaseElement)(element);
+      RmlNative::ReleaseBindingElement(element);
     }
 };
 
@@ -33,3 +35,5 @@ RMLUI_CAPI void *rml_ElementInstancer_New(char *tag, ::instanceElement instanceE
 
     return instancer;
 }
+
+RMLUI_CAPI void rml_ElementInstancer_Free(ElementInstancer* instancer) { delete instancer; }

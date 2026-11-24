@@ -18,15 +18,21 @@ namespace RmlUiNet
 
         public SystemInterface() : base(IntPtr.Zero)
         {
-            _onGetElapsedTime = OnGetElapsedTimeInternal;
-            _onTranslateString = OnTranslateStringInternal;
-            _onLogMessage = LogMessage;
-            _onJoinPath = JoinPath;
-            _onSetMouseCursor = OnSetMouseCursor;
-            _onSetClipboardText = OnSetClipboardText;
-            _onGetClipboardText = OnGetClipboardText;
-            _onActivateKeyboard = OnActivateKeyboard;
-            _onDeactivateKeyboard = OnDeactivateKeyboard;
+            Rml.CheckAbi();
+            _onGetElapsedTime = () => Rml.InvokeCallback(() => ElapsedTime, 0d);
+            _onTranslateString = (output, input) => Rml.InvokeCallback(() =>
+            {
+                string result = TranslateString(out int changes, input);
+                Native.Rml.UpdateString(output, result ?? input);
+                return changes;
+            }, 0);
+            _onLogMessage = (type, message) => Rml.InvokeCallback(() => LogMessage(type, message), true);
+            _onJoinPath = (output, path, file) => Rml.InvokeCallback(() => Native.Rml.UpdateString(output, JoinPath(path, file) ?? file));
+            _onSetMouseCursor = cursor => Rml.InvokeCallback(() => SetMouseCursor(cursor));
+            _onSetClipboardText = text => Rml.InvokeCallback(() => SetClipboardText(text));
+            _onGetClipboardText = output => Rml.InvokeCallback(() => Native.Rml.UpdateString(output, GetClipboardText() ?? string.Empty));
+            _onActivateKeyboard = (x, y, height) => Rml.InvokeCallback(() => ActivateKeyboard(x, y, height));
+            _onDeactivateKeyboard = () => Rml.InvokeCallback(DeactivateKeyboard);
 
             NativePtr = Native.SystemInterface.Create(
                 _onGetElapsedTime,
@@ -45,21 +51,6 @@ namespace RmlUiNet
 
         public virtual string JoinPath(string path, string file) {
             return System.IO.Path.Combine(path, file);
-        }
-
-        private double OnGetElapsedTimeInternal()
-        {
-            return ElapsedTime;
-        }
-
-        private string OnTranslateStringInternal(ref int changeCount, string input)
-        {
-            return TranslateString(out changeCount, input);
-        }
-
-        private void OnSetMouseCursor(string mouseCursor)
-        {
-            SetMouseCursor(mouseCursor);
         }
 
         /// <summary>
@@ -90,30 +81,21 @@ namespace RmlUiNet
 
         }
 
-        private void OnSetClipboardText(string text)
-        {
-            SetClipboardText(text);
-        }
-
         public abstract void SetClipboardText(string text);
-
-        private string OnGetClipboardText()
-        {
-            return GetClipboardText();
-        }
 
         public abstract string GetClipboardText();
 
-        private void OnActivateKeyboard(float caretX, float caretY, float lineHeight)
-        {
-            ActivateKeyboard(caretX, caretY, lineHeight);
-        }
-
         public abstract void ActivateKeyboard(float caretX, float caretY, float lineHeight);
 
-        private void OnDeactivateKeyboard()
+        protected override void Dispose(bool disposing)
         {
-            DeactivateKeyboard();
+            if (IsDisposed)
+                return;
+            Rml.VerifyOutsideCallback();
+            if (Rml.IsRegistered(this))
+                throw new InvalidOperationException("Shut down RmlUi or replace the installed system interface before disposing it.");
+            Native.SystemInterface.Free(NativePtr);
+            base.Dispose(disposing);
         }
 
         public abstract void DeactivateKeyboard();

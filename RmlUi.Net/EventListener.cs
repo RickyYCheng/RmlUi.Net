@@ -10,6 +10,7 @@ namespace RmlUiNet
         private Native.Rml.OnProcessEvent _onProcessEvent;
         private Native.Rml.OnAttachEvent _onAttachEvent;
         private Native.Rml.OnDetachEvent _onDetachEvent;
+        protected int AttachmentCount { get; private set; }
 
         public EventListener() : base(IntPtr.Zero)
         {
@@ -28,40 +29,31 @@ namespace RmlUiNet
 
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
-
+            if (IsDisposed)
+                return;
+            Rml.VerifyOutsideCallback();
+            if (AttachmentCount != 0)
+                throw new InvalidOperationException("Detach the event listener before disposing it.");
             Native.Rml.ReleaseEventListener(NativePtr);
+            base.Dispose(disposing);
         }
 
         internal void ProcessEventInternal(IntPtr eventPtr) {
-            //CoreUIPlugin.UI.Log?.LogTrace($"ProcessEventInternal: {eventPtr}");
-            ProcessEvent(new Event(eventPtr));
+            var lifetime = new NativeLifetime();
+            try { Rml.InvokeCallback(() => ProcessEvent(new Event(eventPtr) { Lifetime = lifetime })); }
+            finally { lifetime.IsAlive = false; }
         }
 
         internal void AttachEventInternal(IntPtr elementPtr, string elementType) {
-            //CoreUIPlugin.UI.Log?.LogTrace($"AttachEventInternal: {elementPtr}");
-            try {
-                OnAttach(
-                    Util.GetOrThrowElementByTypeName(elementPtr, elementType)
-                );
-            }
-            catch (Exception) {
-                //CoreUIPlugin.UI.Log?.LogTrace($"AttachEvent: {ex}");
-            }
+            AttachmentCount++;
+            Rml.InvokeCallback(() => OnAttach(Util.GetOrThrowElementByTypeName(elementPtr, elementType)));
         }
 
         internal void DetachEventInternal(IntPtr elementPtr, string elementType) {
-            //CoreUIPlugin.UI.Log?.LogTrace($"DetachEventInternal: {elementPtr}");
-            try
-            {
-                OnDetach(
-                    Util.GetOrThrowElementByTypeName(elementPtr, elementType)
-                );
-            }
-            catch (Exception)
-            {
-                //CoreUIPlugin.UI.Log?.LogTrace($"DetachEvent: {ex}");
-            }
+            AttachmentCount--;
+            var lifetime = new NativeLifetime();
+            try { Rml.InvokeCallback(() => OnDetach(new ElementGeneric(elementPtr, false, track: false) { Lifetime = lifetime })); }
+            finally { lifetime.IsAlive = false; }
         }
 
         public abstract void ProcessEvent(Event ev);

@@ -1,199 +1,171 @@
-﻿using RmlUiNet;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace RmlUiNet {
+namespace RmlUiNet;
 
-    public unsafe class DataModelConstructor : RmlBase<DataModelConstructor>, IDisposable {
-        private enum BindingType {
-            Float,
-            String,
-            UInt,
-            Int,
-            Bool,
-            StringArray
-        }
+public unsafe class DataModelConstructor : RmlBase<DataModelConstructor>
+{
+    private readonly Context _context;
+    private readonly string _name;
+    private readonly Dictionary<string, (Type Type, IntPtr Storage)> _bindings = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Native.DataModelConstructor.DataEventFunc> _events = new(StringComparer.Ordinal);
+    private readonly NativeLifetime _modelLifetime = new();
+    private readonly List<VariableDefinition> _definitions = new();
 
-        private struct Binding {
-            public IntPtr Ptr;
-            public List<Binding> Children = [];
-            public string Name;
-            public BindingType Type;
+    public DataModelHandle Handle { get; }
 
-            public Binding(string name, IntPtr ptr, BindingType type) {
-                Name = name;
-                Ptr = ptr;
-                Type = type;
-            }
+    internal DataModelConstructor(Context context, string name, IntPtr ptr) : base(ptr)
+    {
+        _context = context;
+        _name = name;
+        Handle = new DataModelHandle(Native.DataModelConstructor.GetModelHandle(NativePtr));
+    }
 
-        }
+    public bool BindVariable(string name, DataVariable variable)
+    {
+        ArgumentNullException.ThrowIfNull(variable);
+        if (!BindVariable(name, variable.NativePtr))
+            return false;
+        variable.Definition.Retain();
+        _definitions.Add(variable.Definition);
+        return true;
+    }
 
-        private Dictionary<string, Binding> _bindings = [];
-        private Dictionary<string, Native.DataModelConstructor.DataEventFunc> _eventBindings = [];
+    public bool BindVariable(string name, IntPtr variable)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        if (variable == IntPtr.Zero)
+            throw new ArgumentException("A data variable is required.", nameof(variable));
+        return Native.DataModelConstructor.BindVariable(NativePtr, name, variable);
+    }
 
-        public DataModelHandle Handle { get; }
+    public bool BindEventCallback(string name, Action<Event, IEnumerable<Variant>> callback)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(callback);
+        if (_events.ContainsKey(name))
+            return false;
 
-        internal DataModelConstructor(IntPtr ptr) : base(ptr) {
-            Handle = new DataModelHandle(Native.DataModelConstructor.GetModelHandle(NativePtr));
-        }
-
-        public bool BindVariable(string name, DataVariable variable)
+        Native.DataModelConstructor.DataEventFunc binding = (_, evt, values, count) =>
         {
-            return Native.DataModelConstructor.BindVariable(NativePtr, name, variable.NativePtr);
-        }
+            using var scope = Rml.EnterCallback();
+            var lifetime = new NativeLifetime();
+            try
+            {
+                var variants = new Variant[count];
+                for (int i = 0; i < count; i++)
+                    variants[i] = new Variant(values[i]) { Lifetime = lifetime };
+                callback(new Event(evt) { Lifetime = lifetime }, variants);
+            }
+            catch (Exception error) { Rml.ReportCallbackError(error); }
+            finally { lifetime.IsAlive = false; }
+        };
 
-        public bool BindVariable(string name, IntPtr variable)
+        if (!Native.DataModelConstructor.BindEventCallback(NativePtr, name, binding))
+            return false;
+        _events.Add(name, binding);
+        return true;
+    }
+
+    public bool BindFloat(string name, float value) => BindScalar(name, value, Native.DataModelConstructor.BindFloat);
+    public bool BindInt(string name, int value) => BindScalar(name, value, Native.DataModelConstructor.BindInt);
+    public bool BindUInt(string name, uint value) => BindScalar(name, value, Native.DataModelConstructor.BindUInt);
+    public bool BindBool(string name, bool value) => BindScalar(name, value, Native.DataModelConstructor.BindBool);
+
+    private bool BindScalar<T>(string name, T value, Func<IntPtr, string, IntPtr, bool> bind) where T : unmanaged
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        IntPtr model = NativePtr;
+        if (_bindings.TryGetValue(name, out var existing))
         {
-            return Native.DataModelConstructor.BindVariable(NativePtr, name, variable);
-        }
-
-        public bool BindEventCallback(string name, Action<Event, IEnumerable<Variant>> callback) {
-            Native.DataModelConstructor.DataEventFunc cb = (instance, evt, variants, numVariants) => {
-                var variantInstances = new Variant[numVariants];
-                for (int i = 0; i < numVariants; i++) {
-                    variantInstances[i] = new Variant(variants[i]);
-                }
-                callback(new Event(evt), variantInstances);
-            };
-
-            if (_eventBindings.ContainsKey(name)) {
-                _eventBindings[name] = cb;
-            }
-            else {
-                _eventBindings.Add(name, cb);
-            }
-            
-            Native.DataModelConstructor.BindEventCallback(NativePtr, name, _eventBindings[name]);
-
+            if (existing.Type != typeof(T))
+                return false;
+            *(T*)existing.Storage = value;
             return true;
         }
 
-        public bool BindFloat(string name, float value) {
-            if (_bindings.TryGetValue(name, out var binding)) {
-                *(float*)binding.Ptr = value;
-                return true;
-            }
+        IntPtr storage = Marshal.AllocHGlobal(sizeof(T));
+        bool bound = false;
+        try
+        {
+            *(T*)storage = value;
+            bound = bind(model, name, storage);
+            if (bound)
+                _bindings.Add(name, (typeof(T), storage));
+            return bound;
+        }
+        finally
+        {
+            if (!bound)
+                Marshal.FreeHGlobal(storage);
+        }
+    }
 
-            var ptr = Marshal.AllocHGlobal(sizeof(float));
-            Buffer.MemoryCopy(&value, (void*)ptr, sizeof(float), sizeof(float));
-            Native.DataModelConstructor.BindFloat(NativePtr, name, ptr);
-
-            _bindings.Add(name, new(name, ptr, BindingType.Float));
+    public bool BindString(string name, string value)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentNullException.ThrowIfNull(value);
+        IntPtr model = NativePtr;
+        if (_bindings.TryGetValue(name, out var existing))
+        {
+            if (existing.Type != typeof(string))
+                return false;
+            Native.Rml.UpdateString(existing.Storage, value);
             return true;
         }
 
-        public bool BindUInt(string name, uint value) {
-            if (_bindings.TryGetValue(name, out var binding)) {
-                *(uint*)binding.Ptr = value;
-                return true;
-            }
-
-            var ptr = Marshal.AllocHGlobal(sizeof(uint));
-            Buffer.MemoryCopy(&value, (void*)ptr, sizeof(uint), sizeof(uint));
-            Native.DataModelConstructor.BindUInt(NativePtr, name, ptr);
-
-            _bindings.Add(name, new(name, ptr, BindingType.UInt));
-            return true;
+        IntPtr storage = Native.Rml.CreateString(value);
+        bool bound = false;
+        try
+        {
+            bound = Native.DataModelConstructor.BindString(model, name, storage);
+            if (bound)
+                _bindings.Add(name, (typeof(string), storage));
+            return bound;
         }
-
-        public bool BindInt(string name, int value) {
-            if (_bindings.TryGetValue(name, out var binding)) {
-                *(int*)binding.Ptr = value;
-                return true;
-            }
-
-            var ptr = Marshal.AllocHGlobal(sizeof(int));
-            Buffer.MemoryCopy(&value, (void*)ptr, sizeof(int), sizeof(int));
-            Native.DataModelConstructor.BindInt(NativePtr, name, ptr);
-
-            _bindings.Add(name, new(name, ptr, BindingType.Int));
-            return true;
+        finally
+        {
+            if (!bound)
+                Native.Rml.FreeString(storage);
         }
+    }
 
-        public bool BindBool(string name, bool value) {
-            if (_bindings.TryGetValue(name, out var binding)) {
-                *(bool*)binding.Ptr = value;
-                return true;
-            }
+    public StructHandle? RegisterStructHandle(string name)
+    {
+        IntPtr handle = Native.DataModelConstructor.RegisterStruct(NativePtr, name);
+        return handle == IntPtr.Zero ? null : new StructHandle(handle) { Lifetime = _modelLifetime };
+    }
 
-            var ptr = Marshal.AllocHGlobal(sizeof(bool));
-            Buffer.MemoryCopy(&value, (void*)ptr, sizeof(bool), sizeof(bool));
-            Native.DataModelConstructor.BindBool(NativePtr, name, ptr);
+    [Obsolete("Use RegisterStructHandle instead.")]
+    public int RegisterStruct(string name) => RegisterStructHandle(name) is null ? 0 : 1;
 
-            _bindings.Add(name, new(name, ptr, BindingType.Bool));
-            return true;
+    public override void Dispose()
+    {
+        Rml.VerifyOutsideCallback();
+        if (!IsDisposed)
+            _context.RemoveDataModel(_name);
+    }
+
+    internal void Release()
+    {
+        if (IsDisposed)
+            return;
+        Handle.Dispose();
+        Native.DataModelConstructor.Free(NativePtr);
+        foreach (var binding in _bindings.Values)
+        {
+            if (binding.Type == typeof(string))
+                Native.Rml.FreeString(binding.Storage);
+            else
+                Marshal.FreeHGlobal(binding.Storage);
         }
-
-        public bool BindString(string name, string value) {
-            if (_bindings.TryGetValue(name, out var binding)) {
-                Native.Rml.UpdateString(binding.Ptr, value);
-                return true;
-            }
-
-            var ptr = Native.Rml.CreateString(value);
-
-            _bindings.Add(name, new(name, ptr, BindingType.String));
-            return Native.DataModelConstructor.BindString(NativePtr, name, ptr);
-        }
-
-        /// <summary>
-        /// Registers a struct type on this data model's type register and returns a handle
-        /// whose members can be bound with <see cref="StructHandle.RegisterMember(string, int)"/>.
-        /// </summary>
-        /// <returns>The struct handle, or null when registration failed.</returns>
-        public StructHandle? RegisterStructHandle(string name) {
-            IntPtr handle = Native.DataModelConstructor.RegisterStruct(NativePtr, name);
-            return handle == IntPtr.Zero ? null : new StructHandle(handle);
-        }
-
-        /// <summary>
-        /// Registers a struct type and returns its native handle truncated to <see cref="int"/>.
-        /// </summary>
-        /// <remarks>
-        /// The handle is a pointer; the truncation loses the upper 32 bits on 64-bit builds, so
-        /// the value is only useful as a truthiness check. Prefer <see cref="RegisterStructHandle"/>.
-        /// </remarks>
-        public int RegisterStruct(string name) {
-            return (int)Native.DataModelConstructor.RegisterStruct(NativePtr, name);
-        }
-
-        private void TryRemoveExistingBinding(string name) {
-            if (_bindings.Remove(name, out var binding)) {
-                switch (binding.Type) {
-                    case BindingType.UInt:
-                    case BindingType.Int:
-                    case BindingType.Bool:
-                    case BindingType.Float:
-                        Marshal.FreeHGlobal(binding.Ptr);
-                        Native.DataModelConstructor.UnbindStringArray(NativePtr, name);
-                        break;
-                    case BindingType.StringArray:
-                        foreach (var child in binding.Children) {
-                            Native.Rml.FreeString(child.Ptr);
-                        }
-                        Marshal.FreeHGlobal(binding.Ptr);
-                        break;
-                    case BindingType.String:
-                        Native.Rml.FreeString(binding.Ptr);
-                        break;
-                }
-            }
-        }
-
-        public override void Dispose() {
-        var existingBindings = _bindings.Keys.ToArray();
-            foreach (var bindingName in existingBindings) {
-                TryRemoveExistingBinding(bindingName);
-            }
-            _bindings.Clear();
-            Native.DataModelConstructor.Free(NativePtr);
-            Handle.Dispose();
-            base.Dispose();
-        }
+        _bindings.Clear();
+        _events.Clear();
+        foreach (var definition in _definitions)
+            definition.Release();
+        _definitions.Clear();
+        _modelLifetime.IsAlive = false;
+        base.Dispose();
     }
 }

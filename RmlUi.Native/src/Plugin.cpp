@@ -15,7 +15,7 @@ typedef void(*onContextDestroy)(Rml::Context* context);
 typedef void(*onElementCreate)(Rml::Element* element);
 typedef void(*onElementDestroy)(Rml::Element* element);
 
-class Plugin : Rml::Plugin {
+class Plugin : public Rml::Plugin {
 private:
     ::onInitialise m_onInitialise;
     ::onShutdown m_onShutdown;
@@ -28,6 +28,8 @@ private:
     ::onElementDestroy m_onElementDestroy;
 
 public:
+    int GetEventClasses() override { return EVT_BASIC | EVT_DOCUMENT | EVT_ELEMENT; }
+
     explicit Plugin(::onInitialise onInitialise,
               ::onShutdown onShutdown,
               ::onDocumentOpen onDocumentOpen,
@@ -81,8 +83,7 @@ public:
     }
 
     void OnElementDestroy(Rml::Element* element) override {
-      // Intentionally empty: the managed binding owns the element lifetime.
-      (void)element;
+      (*m_onElementDestroy)(element);
     }
 };
 
@@ -97,3 +98,5 @@ RMLUI_CAPI void *rml_Plugin_New(::onInitialise onInitialise,
               ::onElementDestroy onElementDestroy) {
     return new Plugin(onInitialise, onShutdown, onDocumentOpen, onDocumentLoad, onDocumentUnload, onContextCreate, onContextDestroy, onElementCreate, onElementDestroy);
 }
+
+RMLUI_CAPI void rml_Plugin_Free(Plugin* instance) { delete instance; }

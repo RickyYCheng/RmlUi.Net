@@ -1,8 +1,10 @@
 ﻿#pragma once
 
 #include "RmlUi/Core/Element.h"
+#include "RmlUi/Core/ElementInstancer.h"
 
 #include <unordered_map>
+#include <unordered_set>
 
 // Keeps elements created by rml_ElementDocument_CreateElement / rml_ElementDocument_CreateTextNode
 // alive until they are attached to the document tree. RmlUi hands out owning pointers
@@ -40,6 +42,36 @@ inline Rml::ElementPtr TakeDetachedElement(Rml::Element* element) {
     Rml::ElementPtr result = std::move(it->second);
     pool.erase(it);
     return result;
+}
+
+inline auto& BindingElements() {
+    static std::unordered_set<Rml::Element*> elements;
+    return elements;
+}
+
+inline void ReleaseBindingElement(Rml::Element* element) {
+    BindingElements().erase(element);
+    delete element;
+}
+
+class BindingElementOwner final : public Rml::ElementInstancer {
+public:
+    Rml::ElementPtr InstanceElement(Rml::Element*, const Rml::String&, const Rml::XMLAttributes&) override {
+        return nullptr;
+    }
+
+    void ReleaseElement(Rml::Element* element) override { ReleaseBindingElement(element); }
+};
+
+inline Rml::Element* OwnBindingElement(Rml::Element* element) {
+    static BindingElementOwner owner;
+    element->SetInstancer(&owner);
+    BindingElements().insert(element);
+    return StoreDetachedElement(Rml::ElementPtr(element));
+}
+
+inline Rml::ElementPtr TakeBindingElement(Rml::Element* element) {
+    return BindingElements().count(element) ? TakeDetachedElement(element) : Rml::ElementPtr();
 }
 
 // Releases every detached element still in the pool. Must be called before

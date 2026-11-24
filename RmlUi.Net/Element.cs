@@ -222,13 +222,19 @@ namespace RmlUiNet
         float GetScrollHeight();
     }
 
-    public abstract class Element<T> : RmlBase<T>, Element
+    internal interface IRmlElementIdentity
+    {
+        NativeLifetime? Lifetime { get; }
+    }
+
+    public abstract class Element<T> : RmlBase<T>, Element, IRmlElementIdentity
         where T : class
     {
         private ElementEventListener? _listener;
+        NativeLifetime? IRmlElementIdentity.Lifetime => Lifetime;
         #region Properties
 
-        public string TagName => Marshal.PtrToStringAnsi(Native.Element.GetTagName(NativePtr)) ?? string.Empty;
+        public string TagName => Marshal.PtrToStringUTF8(Native.Element.GetTagName(NativePtr)) ?? string.Empty;
 
         /// <summary>
         /// Gets the document this element belongs to.
@@ -237,19 +243,9 @@ namespace RmlUiNet
         {
             get
             {
-                try
-                {
-                    var el = Native.Element.GetOwnerDocument(NativePtr, out var elementPtr);
-                    if (el == IntPtr.Zero || elementPtr == IntPtr.Zero) return null;
-                    var elementType = Marshal.PtrToStringAnsi(el);
-                    if (string.IsNullOrEmpty(elementType)) return null;
-                    return Util.GetElementByTypeName(elementPtr, elementType) as ElementDocument;
-                }
-                catch (Exception ex)
-                {
-                    Rml.Log($"Error getting OwnerDocument: {ex}", LogType.Error);
-                    return null;
-                }
+                var el = Native.Element.GetOwnerDocument(NativePtr, out var elementPtr);
+                var type = Marshal.PtrToStringUTF8(el);
+                return type is null ? null : Util.GetElementByTypeName(elementPtr, type) as ElementDocument;
             }
         }
 
@@ -258,8 +254,13 @@ namespace RmlUiNet
         #region Methods
 
         protected Element(IntPtr ptr, bool automaticallyRegisterInCache)
+            : this(ptr, automaticallyRegisterInCache, true) { }
+
+        internal Element(IntPtr ptr, bool automaticallyRegisterInCache, bool track)
             : base(ptr, automaticallyRegisterInCache)
         {
+            if (track && ptr != IntPtr.Zero)
+                Lifetime = RmlInstanceCache.Instance.TrackElement(ptr);
         }
 
         /// <summary>
@@ -272,12 +273,13 @@ namespace RmlUiNet
         /// </remarks>
         public override bool Equals(object? obj)
         {
-            return obj is Element el && el.NativePtr == NativePtr;
+            return ReferenceEquals(this, obj) || (Lifetime is not null && obj is IRmlElementIdentity element &&
+                ReferenceEquals(Lifetime, element.Lifetime));
         }
 
         public override int GetHashCode()
         {
-            return NativePtr.GetHashCode();
+            return Identity.GetHashCode();
         }
 
         /// <summary>
@@ -305,11 +307,11 @@ namespace RmlUiNet
             public void AddHandler(string eventName, Action<Event> handler)
             {
                 if (string.IsNullOrEmpty(eventName)) throw new ArgumentNullException("eventName");
-                if (!_handlers.TryGetValue(eventName.ToLower(), out var handlers))
+                if (!_handlers.TryGetValue(eventName, out var handlers))
                 {
                     handlers = new();
-                    _handlers[eventName.ToLower()] = handlers;
-                    _owningElement.AddEventListener(eventName.ToLower(), this);
+                    _handlers[eventName] = handlers;
+                    _owningElement.AddEventListener(eventName, this);
                 }
                 handlers.Add(handler);
             }
@@ -317,7 +319,7 @@ namespace RmlUiNet
             public void RemoveHandler(string eventName, Action<Event> handler)
             {
                 if (string.IsNullOrEmpty(eventName)) throw new ArgumentNullException("eventName");
-                if (_handlers.TryGetValue(eventName.ToLower(), out var handlers))
+                if (_handlers.TryGetValue(eventName, out var handlers))
                 {
                     handlers.Remove(handler);
                 }
@@ -331,7 +333,12 @@ namespace RmlUiNet
                 if (!string.IsNullOrEmpty(ev.Type) &&
                     _handlers.TryGetValue(ev.Type.ToLowerInvariant(), out var handlers))
                 {
-                    handlers.ToList().ForEach(handler => handler.Invoke(ev));
+                    foreach (var handler in handlers.ToArray())
+                    {
+                        Rml.InvokeCallback(() => handler(ev));
+                        if (!ev.IsImmediatePropagating)
+                            break;
+                    }
                 }
             }
 
@@ -342,31 +349,30 @@ namespace RmlUiNet
 
             public override void OnDetach(Element element)
             {
-                base.OnDetach(element);
-            }
-
-            public override void Dispose()
-            {
-                foreach (var evtName in _handlers.Keys.ToArray())
-                {
-                    _owningElement.RemoveEventListener(evtName.ToLower(), this);
-                }
-                _handlers.Clear();
-                base.Dispose();
+                if (AttachmentCount == 0)
+                    Rml.Retire(() =>
+                    {
+                        if (AttachmentCount == 0)
+                            Dispose();
+                    });
             }
         }
 
         public void AddEventListener(string name, Action<Event> action)
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException("name");
-            _listener ??= new ElementEventListener(this);
-            _listener.AddHandler(name.ToLower(), action);
+            _ = NativePtr;
+            ArgumentNullException.ThrowIfNull(action);
+            if (_listener is null || _listener.IsDisposed)
+                _listener = new ElementEventListener(this);
+            _listener.AddHandler(name.ToLowerInvariant(), action);
         }
 
         public void RemoveEventListener(string name, Action<Event> action)
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException("name");
-            _listener?.RemoveHandler(name.ToLower(), action);
+            _ = NativePtr;
+            _listener?.RemoveHandler(name.ToLowerInvariant(), action);
         }
 
         /// <summary>
@@ -386,16 +392,14 @@ namespace RmlUiNet
         {
             if (string.IsNullOrEmpty(event_id)) throw new ArgumentNullException("event_id");
             var dict = Native.RmlDictionary.Create();
-            List<IntPtr> variants = [];
             try
             {
                 foreach (var kv in parameters)
                 {
-                    var variant = Util.ToVariant(kv.Value);
+                    using var variant = Util.ToVariant(kv.Value);
 
                     if (variant is not null)
                     {
-                        variants.Add(variant.NativePtr);
                         Native.RmlDictionary.Insert(dict, kv.Key, variant.NativePtr);
                     }
                 }
@@ -403,10 +407,6 @@ namespace RmlUiNet
             }
             finally
             {
-                foreach (var variant in variants)
-                {
-                    Native.Variant.Free(variant);
-                }
                 Native.RmlDictionary.Free(dict);
             }
         }
@@ -518,10 +518,7 @@ namespace RmlUiNet
         /// <returns></returns>
         public string GetInnerRml()
         {
-            var strPtr = Native.Element.GetInnerRml(NativePtr);
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Native.Rml.FreeStringBuffer(strPtr);
-            return strValue ?? "";
+            return Util.ReadOwnedUtf8(Native.Element.GetInnerRml(NativePtr));
         }
 
         public void AddClass(string className)
@@ -594,12 +591,7 @@ namespace RmlUiNet
         public string GetProperty(string name)
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException("name");
-            var strPtr = Native.Element.GetPropertyString(NativePtr, name);
-            if (strPtr == IntPtr.Zero) return "";
-
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Native.Rml.FreeStringBuffer(strPtr);
-            return strValue ?? "";
+            return Util.ReadOwnedUtf8(Native.Element.GetPropertyString(NativePtr, name));
         }
 
         public void SetProperty(string propertyName, string value)
@@ -613,12 +605,7 @@ namespace RmlUiNet
         public string GetAttribute(string attributeName)
         {
             if (string.IsNullOrEmpty(attributeName)) throw new ArgumentNullException("attributeName");
-            var strPtr = Native.Element.GetAttributeString(NativePtr, attributeName, "");
-            if (strPtr == IntPtr.Zero) return "";
-
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Native.Rml.FreeStringBuffer(strPtr);
-            return strValue ?? "";
+            return Util.ReadOwnedUtf8(Native.Element.GetAttributeString(NativePtr, attributeName, ""));
         }
 
         public void SetAttribute(string attributeName, string value)
@@ -674,7 +661,7 @@ namespace RmlUiNet
             get
             {
                 var ptr = Native.Element.GetId(NativePtr);
-                return ptr == IntPtr.Zero ? string.Empty : Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+                return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
             }
         }
 

@@ -7,9 +7,13 @@ namespace RmlUiNet {
         private Native.ElementCustom.OnRender? _onRender;
 
         public ElementCustom(string tagName) : base(IntPtr.Zero, false) {
-            _onRender = IsImplemented(nameof(OnRender)) ? OnRender : null;
+            Rml.RequireInitialised();
+            ArgumentException.ThrowIfNullOrEmpty(tagName);
+            _onRender = IsImplemented(nameof(OnRender)) ? () => Rml.InvokeCallback(OnRender) : null;
 
             NativePtr = Native.ElementCustom.Create(tagName, _onRender);
+            Lifetime = RmlInstanceCache.Instance.TrackElement(NativePtr);
+            RmlInstanceCache.Instance.RetainElementOwner(NativePtr, this);
         }
 
         public virtual void OnRender() {
@@ -24,6 +28,11 @@ namespace RmlUiNet {
         }
 
         public override void Dispose() {
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
+            if (GetParentNode() is not null)
+                throw new InvalidOperationException("Do not dispose an element owned by a parent.");
             Native.ElementCustom.Free(NativePtr);
             base.Dispose();
         }

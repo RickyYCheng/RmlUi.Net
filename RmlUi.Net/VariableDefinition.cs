@@ -7,12 +7,13 @@ namespace RmlUiNet {
         private Native.VariableDefinition.OnSet _onSet;
         private Native.VariableDefinition.OnSize _onSize;
         private Native.VariableDefinition.OnChild _onChild;
+        private int _references;
 
         public VariableDefinition(DataVariableType type) : base(IntPtr.Zero) {
             _onGet = OnGet;
             _onSet = OnSet;
-            _onSize = OnSize;
-            _onChild = OnChild;
+            _onSize = ptr => Rml.InvokeCallback(() => Size(ptr), 0);
+            _onChild = (ptr, name, index) => Rml.InvokeCallback(() => Child(ptr, name, index)?.NativePtr ?? IntPtr.Zero, IntPtr.Zero);
 
             NativePtr = Native.VariableDefinition.Create(
                 type,
@@ -25,27 +26,36 @@ namespace RmlUiNet {
             ManuallyRegisterCache(NativePtr, this);
         }
 
-        private bool OnGet(IntPtr ptr, ref IntPtr variantPtr)
+        private bool OnGet(IntPtr ptr, IntPtr variantPtr)
         {
-            var res = Get(ptr, out var variant);
-            variantPtr = variant.NativePtr;
-            return res;
+            return Rml.InvokeCallback(() =>
+            {
+                if (!Get(ptr, out var variant) || variant is null)
+                    return false;
+                Native.Variant.Copy(variantPtr, variant.NativePtr);
+                GC.KeepAlive(variant);
+                return true;
+            }, false);
         }
 
         private bool OnSet(IntPtr ptr, IntPtr variantPtr)
         {
-            var variant = new Variant(variantPtr);
-            return Set(ptr, variant);
+            using var variant = new Variant(variantPtr);
+            return Rml.InvokeCallback(() => Set(ptr, variant), false);
         }
 
-        private int OnSize(IntPtr ptr)
-        {
-            return Size(ptr);
-        }
+        internal void Retain() => _references++;
+        internal void Release() => _references--;
 
-        private IntPtr OnChild(IntPtr ptr, string name, int index)
+        protected override void Dispose(bool disposing)
         {
-            return Child(ptr, name, index).NativePtr;
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
+            if (_references != 0)
+                throw new InvalidOperationException("Release the variables and models using this definition first.");
+            Native.VariableDefinition.Free(NativePtr);
+            base.Dispose(disposing);
         }
 
         public abstract DataVariable Child(IntPtr ptr, string name, int index);

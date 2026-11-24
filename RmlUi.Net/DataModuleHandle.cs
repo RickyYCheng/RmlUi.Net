@@ -27,6 +27,9 @@ namespace RmlUiNet {
         }
 
         public override void Dispose() {
+            Rml.VerifyOutsideCallback();
+            if (IsDisposed)
+                return;
             Native.DataModelHandle.Free(NativePtr);
             base.Dispose();
         }

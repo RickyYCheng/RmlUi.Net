@@ -13,6 +13,7 @@ RMLUI_CAPI void rml_StyleSheetContainer_Free(Rml::StyleSheetContainer* container
 
 RMLUI_CAPI bool rml_StyleSheetContainer_LoadStyleSheetContainer(Rml::StyleSheetContainer *container, const char *file_name) {
 	  auto file_stream = Rml::MakeUnique<Rml::StreamFile>();
-	  file_stream->Open(file_name);
+	  if (!file_name || !file_stream->Open(file_name))
+          return false;
     return container->LoadStyleSheetContainer(file_stream.get(), 1);
 }

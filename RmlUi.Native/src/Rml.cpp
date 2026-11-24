@@ -5,7 +5,27 @@
 #include <cstdlib>
 #include <string>
 
-static std::unordered_map<Rml::String*, Rml::String> dataModelPool;
+using OnDestroyed = void(*)(void*);
+
+class LifetimeObserver final : public Rml::Plugin {
+public:
+    OnDestroyed context_destroyed = nullptr;
+    OnDestroyed element_destroyed = nullptr;
+
+    int GetEventClasses() override { return EVT_BASIC | EVT_ELEMENT; }
+    void OnContextDestroy(Rml::Context* context) override { context_destroyed(context); }
+    void OnElementDestroy(Rml::Element* element) override { element_destroyed(element); }
+};
+
+static LifetimeObserver lifetime_observer;
+
+RMLUI_CAPI int rml_BindingAbiVersion() { return 2; }
+
+RMLUI_CAPI void rml_ObserveLifetime(OnDestroyed context_destroyed, OnDestroyed element_destroyed) {
+    lifetime_observer.context_destroyed = context_destroyed;
+    lifetime_observer.element_destroyed = element_destroyed;
+    Rml::RegisterPlugin(&lifetime_observer);
+}
 
 RMLUI_CAPI bool rml_Initialise() {
     return Rml::Initialise();
@@ -79,9 +99,7 @@ RMLUI_CAPI Rml::SystemInterface* rml_GetSystemInterface() {
 }
 
 RMLUI_CAPI std::string* rml_CreateString(const char* value) {
-    auto str = new Rml::String(value);
-    dataModelPool[str] = *str;
-    return str;
+    return value ? new Rml::String(value) : nullptr;
 }
 
 RMLUI_CAPI void rml_Log(Rml::Log::Type type,  char* message) {
@@ -95,7 +113,7 @@ RMLUI_CAPI void rml_UpdateString(std::string* str, const char* new_value) {
 }
 
 RMLUI_CAPI void rml_FreeString(std::string* str) {
-        dataModelPool.erase(str);
+    delete str;
 }
 
 // Frees a string buffer previously returned by this library. String-returning

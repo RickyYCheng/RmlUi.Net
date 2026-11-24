@@ -4,15 +4,8 @@
 #include "Pool.h"
 #include <string>
 
-static std::unordered_map<std::string, Rml::DataModelConstructor> dataModelPool;
-
 RMLUI_CAPI void *rml_Context_New(const char *name, Rml::Vector2i dimensions, Rml::RenderInterface *renderInterface) {
     return Rml::CreateContext(name, dimensions, renderInterface);
-}
-
-RMLUI_CAPI void rml_Context_Delete(Rml::Context *context) {
-    if (context != nullptr)
-        delete context;
 }
 
 RMLUI_CAPI void rml_Context_Update(Rml::Context *context) {
@@ -115,33 +108,17 @@ RMLUI_CAPI Rml::DataModelConstructor* rml_Context_CreateDataModel(Rml::Context* 
     if (!context || !name) return nullptr;
 
     auto result = context->CreateDataModel(name);
-    dataModelPool[name] = result;
-
-    return &dataModelPool[name];
+    return result ? new Rml::DataModelConstructor(result) : nullptr;
 }
 
 RMLUI_CAPI Rml::DataModelConstructor* rml_Context_GetDataModel(Rml::Context* context, const char* name) {
     if (!context || !name) return nullptr;
 
-    auto it = dataModelPool.find(name);
-    if (it != dataModelPool.end()) {
-        return &it->second;
-    }
-
     auto data_model = context->GetDataModel(name);
-    if (data_model) {
-        dataModelPool[name] = data_model;
-        return &dataModelPool[name];
-    }
-
-    return nullptr;
+    return data_model ? new Rml::DataModelConstructor(data_model) : nullptr;
   }
 
 RMLUI_CAPI bool rml_Context_RemoveDataModel(Rml::Context* context, const char* name) {
     if (!context || !name) return false;
-    bool removed = context->RemoveDataModel(name);
-    if (removed) {
-        dataModelPool.erase(name);
-    }
-    return removed;
+    return context->RemoveDataModel(name);
 }

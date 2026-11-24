@@ -24,13 +24,13 @@ namespace RmlUiNet.Native
         public static extern IntPtr Create(OnLoadInlineScript? onLoadInlineScript, OnLoadExternalScript? onLoadExternalScript);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_CreateElement")]
-        public static extern IntPtr CreateElement(IntPtr document, string name);
+        public static extern IntPtr CreateElement(IntPtr document, [MarshalAs(UnmanagedType.LPUTF8Str)] string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_CreateTextNode")]
-        public static extern IntPtr CreateTextNode(IntPtr document, string text);
+        public static extern IntPtr CreateTextNode(IntPtr document, [MarshalAs(UnmanagedType.LPUTF8Str)] string text);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_SetTitle")]
-        public static extern void SetTitle(IntPtr document, string title);
+        public static extern void SetTitle(IntPtr document, [MarshalAs(UnmanagedType.LPUTF8Str)] string title);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementDocument_GetTitle")]
         public static extern IntPtr GetTitle(IntPtr document);
@@ -42,9 +42,9 @@ namespace RmlUiNet.Native
         public static extern void Free(IntPtr document);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnLoadInlineScript(string context, string source_path, int source_line);
+        internal delegate void OnLoadInlineScript([MarshalAs(UnmanagedType.LPUTF8Str)] string context, [MarshalAs(UnmanagedType.LPUTF8Str)] string source_path, int source_line);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnLoadExternalScript(string source_path);
+        internal delegate void OnLoadExternalScript([MarshalAs(UnmanagedType.LPUTF8Str)] string source_path);
     }
 }

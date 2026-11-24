@@ -25,7 +25,7 @@ typedef void(*onReleaseTexture)(Rml::TextureHandle texture);
 
 typedef void(*onEnableScissorRegion)(bool enable);
 
-typedef void(*onSetScissorRegion)(Rml::Rectanglei region);
+typedef void(*onSetScissorRegion)(int x, int y, int width, int height);
 
 typedef void(*onSetTransform)(const Rml::Matrix4f* transform);
 
@@ -91,7 +91,7 @@ public:
     }
 
     void SetScissorRegion(Rml::Rectanglei region) override {
-        (*m_onSetScissorRegion)(region);
+        (*m_onSetScissorRegion)(region.Left(), region.Top(), region.Width(), region.Height());
     }
 
     void SetTransform(const Rml::Matrix4f* transform) override {
@@ -115,3 +115,5 @@ RMLUI_CAPI void rml_RenderInterface_Test(Rml::RenderInterface* render) {
     // Diagnostic entry point used by the managed binding to verify the interface pointer.
     (void)render;
 }
+
+RMLUI_CAPI void rml_RenderInterface_Free(RenderInterface* instance) { delete instance; }

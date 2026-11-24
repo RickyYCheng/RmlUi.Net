@@ -39,6 +39,11 @@ namespace RmlUiNet
 
     internal static class Util
     {
+        public static string ReadOwnedUtf8(IntPtr pointer)
+        {
+            try { return Marshal.PtrToStringUTF8(pointer) ?? string.Empty; }
+            finally { Native.Rml.FreeStringBuffer(pointer); }
+        }
         public static Element GetOrThrowElementByTypeName(IntPtr elementPtr, string elementType)
         {
             var element = GetElementByTypeName(elementPtr, elementType);
@@ -56,6 +61,8 @@ namespace RmlUiNet
             // owner document). Wrapping it would hand out an element that dereferences null.
             if (elementPtr == IntPtr.Zero)
                 return null;
+            if (RmlInstanceCache.Instance.GetElementOwner(elementPtr) is { } owner)
+                return owner;
 
             if (elementType == "class Rml::ElementDocument" || elementType == "class ElementDocumentCustom") {
                 return ElementDocument.Create(elementPtr);
@@ -94,27 +101,27 @@ namespace RmlUiNet
         {
             if (value is string stringValue)
             {
-                return new Variant(Native.Variant.CreateString(stringValue));
+                return new Variant(stringValue);
             }
             else if (value is int intValue)
             {
-                return new Variant(Native.Variant.CreateInt(intValue));
+                return new Variant(intValue);
             }
             else if (value is uint uintValue)
             {
-                return new Variant(Native.Variant.CreateUInt(uintValue));
+                return new Variant(uintValue);
             }
             else if (value is float floatValue)
             {
-                return new Variant(Native.Variant.CreateFloat(floatValue));
+                return new Variant(floatValue);
             }
             else if (value is double doubleValue)
             {
-                return new Variant(Native.Variant.CreateDouble(doubleValue));
+                return new Variant(doubleValue);
             }
             else if (value is bool boolValue)
             {
-                return new Variant(Native.Variant.CreateBool(boolValue));
+                return new Variant(boolValue);
             }
             else
             {

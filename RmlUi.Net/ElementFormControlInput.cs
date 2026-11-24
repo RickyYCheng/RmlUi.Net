@@ -14,24 +14,15 @@ namespace RmlUiNet
 
         internal static ElementFormControlInput? Create(IntPtr ptr)
         {
-            var res = GetOrCreateCache(ptr, ptr => new ElementFormControlInput(ptr, false));
-
-            if (res is null)
-            {
-                throw new Exception($"GET OR CREATE BU CREATE NULL {ptr:X8}");
-            }
-            return res;
+            return GetOrCreateCache(ptr, address => new ElementFormControlInput(address, false));
         }
 
         public string GetValue()
         {
-            var strPtr = Native.ElementFormControlInput.GetValue(NativePtr);
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
-            Native.Rml.FreeStringBuffer(strPtr);
-            return strValue ?? "";
+            return Util.ReadOwnedUtf8(Native.ElementFormControlInput.GetValue(NativePtr));
         }
 
-        public void SetValue(string value) => Native.ElementFormControlInput.SetValue(NativePtr, value);
+        public void SetValue(string value) => Native.ElementFormControlInput.SetValue(NativePtr, value ?? throw new ArgumentNullException(nameof(value)));
 
         #endregion
     }

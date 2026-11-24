@@ -8,11 +8,14 @@ using System.Threading.Tasks;
 
 namespace RmlUiNet.Native {
     internal static class Variant {
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_Copy")]
+        public static extern void Copy(IntPtr destination, IntPtr source);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_CreateInt")]
         public static extern IntPtr CreateInt(int value);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_CreateString")]
-        public static extern IntPtr CreateString(string value);
+        public static extern IntPtr CreateString([MarshalAs(UnmanagedType.LPUTF8Str)] string value);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_CreateUInt")]
         public static extern IntPtr CreateUInt(uint value);
@@ -24,7 +27,7 @@ namespace RmlUiNet.Native {
         public static extern IntPtr CreateDouble(double value);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_CreateBool")]
-        public static extern IntPtr CreateBool(bool value);
+        public static extern IntPtr CreateBool([MarshalAs(UnmanagedType.I1)] bool value);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_GetType")]
         public static extern int GetType(IntPtr variant);
@@ -36,7 +39,7 @@ namespace RmlUiNet.Native {
         public static extern int GetAsInt(IntPtr variant, int defaultValue);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_GetAsString")]
-        public static extern IntPtr GetAsString(IntPtr variant, string defaultValue);
+        public static extern IntPtr GetAsString(IntPtr variant, [MarshalAs(UnmanagedType.LPUTF8Str)] string defaultValue);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_GetAsUInt")]
         public static extern uint GetAsUInt(IntPtr variant, uint defaultValue);
@@ -46,7 +49,7 @@ namespace RmlUiNet.Native {
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_GetAsBool")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool GetAsBool(IntPtr variant, bool defaultValue);
+        public static extern bool GetAsBool(IntPtr variant, [MarshalAs(UnmanagedType.I1)] bool defaultValue);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Variant_Free")]
         public static extern void Free(IntPtr variant);

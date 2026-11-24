@@ -17,7 +17,7 @@
     <PackageId>RickyYC.RmlUi.Net</PackageId>
     <Authors>RickyYC</Authors>
     <Company>RickyYC</Company>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseFile>THIRD-PARTY-NOTICES.md</PackageLicenseFile>
     <Description>C# bindings for RmlUi, maintained independently of the upstream RmlUi.Net package</Description>
     <RepositoryUrl>https://github.com/RickyYCheng/RmlUi.Net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -25,7 +25,8 @@
     <!-- Version is fixed and explicit: bump it here for each release (and in CHANGELOG.md).
          Pack explicitly with 'dotnet pack' from the CI pipeline, which stages all native
          artifacts first. -->
-    <VersionPrefix>1.2.0</VersionPrefix>
+    <VersionPrefix>1.3.0</VersionPrefix>
+    <VersionSuffix>rc.1</VersionSuffix>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
     <GenerateAssemblyInformationalVersionAttribute>true</GenerateAssemblyInformationalVersionAttribute>
@@ -41,38 +42,28 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-    <!-- Native artifacts per RID. The Condition keeps plain 'dotnet build' working when
-         some platform artifacts have not been staged yet; the pack-time validation target
-         below guarantees a published package always contains all four platforms. -->
-    <Content Include="runtimes\win-x64\native\RmlUiNative.dll" Condition="Exists('runtimes\win-x64\native\RmlUiNative.dll')">
-      <Pack>True</Pack>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <PackagePath>runtimes\win-x64\native\RmlUiNative.dll</PackagePath>
-    </Content>
-    <Content Include="runtimes\win-x86\native\RmlUiNative.dll" Condition="Exists('runtimes\win-x86\native\RmlUiNative.dll')">
-      <Pack>True</Pack>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <PackagePath>runtimes\win-x86\native\RmlUiNative.dll</PackagePath>
-    </Content>
-    <Content Include="runtimes\linux-x64\native\libRmlUiNative.so" Condition="Exists('runtimes\linux-x64\native\libRmlUiNative.so')">
-      <Pack>True</Pack>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <PackagePath>runtimes\linux-x64\native\libRmlUiNative.so</PackagePath>
-    </Content>
-    <Content Include="runtimes\osx-x64\native\RmlUiNative.dylib" Condition="Exists('runtimes\osx-x64\native\RmlUiNative.dylib')">
-      <Pack>True</Pack>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <PackagePath>runtimes\osx-x64\native\RmlUiNative.dylib</PackagePath>
-    </Content>
+    <None Include="../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="THIRD-PARTY-NOTICES.md" />
+    <None Include="../LICENSE" Pack="true" PackagePath="licenses/RmlUi.Net/" />
+    <None Include="../RmlUi.Native/ext/RmlUi/LICENSE.txt" Pack="true" PackagePath="licenses/RmlUi.txt" />
+    <None Include="../RmlUi.Native/ext/RmlUi/Include/RmlUi/Core/Containers/LICENSE.txt" Pack="true" PackagePath="licenses/RmlUi-Containers.txt" />
+    <None Include="../RmlUi.Native/ext/RmlUi/Source/Debugger/LICENSE.txt" Pack="true" PackagePath="licenses/RmlUi-Debugger-Fonts.txt" />
+    <None Include="../RmlUi.Native/ext/freetype/docs/FTL.TXT" Pack="true" PackagePath="licenses/FreeType.txt" />
+    <None Include="../RmlUi.Native/ext/freetype/src/bdf/README" Pack="true" PackagePath="licenses/FreeType-BDF/" />
+    <None Include="../RmlUi.Native/ext/freetype/src/pcf/README" Pack="true" PackagePath="licenses/FreeType-PCF/" />
+    <None Include="../RmlUi.Native/ext/freetype/src/gzip/zlib.h" Pack="true" PackagePath="licenses/FreeType-zlib.h" />
+    <RuntimeLibrary Include="runtimes/win-x64/native/RmlUiNative.dll" />
+    <RuntimeLibrary Include="runtimes/win-x86/native/RmlUiNative.dll" />
+    <RuntimeLibrary Include="runtimes/linux-x64/native/libRmlUiNative.so" />
+    <RuntimeLibrary Include="runtimes/osx-x64/native/RmlUiNative.dylib" />
+    <RuntimeLibrary Include="runtimes/osx-arm64/native/RmlUiNative.dylib" />
+    <None Update="@(RuntimeLibrary)" Pack="true" PackagePath="%(Identity)" />
   </ItemGroup>
 
-  <!-- Pack-time guard: a package must never be published without all four native artifacts.
-       Set -p:SkipRuntimeArtifactValidation=true to pack a partial package locally; CI never does. -->
-  <Target Name="ValidateRuntimeArtifacts" BeforeTargets="GenerateNuspec" Condition="'$(SkipRuntimeArtifactValidation)' != 'true'">
-    <Error Condition="!Exists('runtimes\win-x64\native\RmlUiNative.dll')" Text="Missing native artifact: runtimes\win-x64\native\RmlUiNative.dll" />
-    <Error Condition="!Exists('runtimes\win-x86\native\RmlUiNative.dll')" Text="Missing native artifact: runtimes\win-x86\native\RmlUiNative.dll" />
-    <Error Condition="!Exists('runtimes\linux-x64\native\libRmlUiNative.so')" Text="Missing native artifact: runtimes\linux-x64\native\libRmlUiNative.so" />
-    <Error Condition="!Exists('runtimes\osx-x64\native\RmlUiNative.dylib')" Text="Missing native artifact: runtimes\osx-x64\native\RmlUiNative.dylib" />
+  <Target Name="ValidateRuntimeArtifacts" BeforeTargets="GenerateNuspec">
+    <Error Condition="!Exists('%(RuntimeLibrary.FullPath)') And ('$(LocalPack)' != 'true' Or '$(ContinuousIntegrationBuild)' == 'true')"
+           Text="Missing native library: %(RuntimeLibrary.Identity). Build it from this revision before packing." />
+    <Error Condition="'$(LocalPack)' == 'true' And !$([System.String]::Copy('$(PackageVersion)').Contains('-local.'))"
+           Text="Partial local packages require a version containing '-local.' and must not be published." />
   </Target>
 
 </Project>

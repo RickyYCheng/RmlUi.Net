@@ -9,8 +9,12 @@ namespace RmlUiNet
     public static class StyleSheetSpecification
     {
         public static PropertyDefinition RegisterProperty(string name, string defaultValue, bool inherited, bool forcesLayout = false) {
+            Rml.VerifyOutsideCallback();
+            Rml.RequireInitialised();
+            ArgumentException.ThrowIfNullOrEmpty(name);
+            ArgumentNullException.ThrowIfNull(defaultValue);
             var intPtr = RmlUiNet.Native.StyleSheetSpecification.RegisterProperty(name, defaultValue, inherited, forcesLayout);
-            return new PropertyDefinition(intPtr);
+            return new PropertyDefinition(intPtr) { Lifetime = Rml.SessionLifetime };
         }
     }
 }

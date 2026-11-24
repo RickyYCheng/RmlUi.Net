@@ -1,9 +1,10 @@
-```
-git submodule update --init --recursive
+# Native library
 
-cd mkdir build && cd build
+See [Build and test](../README.md#build-and-test) for commands and dependencies.
+Use a separate CMake build directory for each architecture. The RmlUi patches
+apply to the copy in the build directory; the submodule checkout is unchanged.
 
-cmake .. -DCMAKE_GENERATOR_PLATFORM=win32 -DCMAKE_SYSTEM_PROCESSOR=x86 -DCMAKE_BUILD_TYPE=Debug
-cmake --build .
-cp ../bin/Debug/RmlUiNative.dll ../../RmlUI.Net/runtimes/win-x86/native/RmlUiNative.dll
-```
+The library exposes the C ABI used by RmlUi.Net. It is not a standalone C++
+distribution of RmlUi. When an interop signature changes, update the matching
+managed declaration and the ABI version on both sides. Export parity detects
+missing symbols, not incorrect parameter types. Run the runtime tests as well.

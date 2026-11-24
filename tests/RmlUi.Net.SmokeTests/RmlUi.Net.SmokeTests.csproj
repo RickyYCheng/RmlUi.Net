@@ -1,50 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>RmlUi.Net.SmokeTests</AssemblyName>
-    <RootNamespace>RmlUi.Net.SmokeTests</RootNamespace>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\..\RmlUi.Net\RmlUi.Net.csproj" />
+    <ProjectReference Include="../../RmlUi.Net/RmlUi.Net.csproj" Condition="'$(CandidatePackageVersion)' == ''" />
+    <PackageReference Include="RickyYC.RmlUi.Net" Version="$(CandidatePackageVersion)" Condition="'$(CandidatePackageVersion)' != ''" />
   </ItemGroup>
-
-  <!-- DllImport probes the application directory first. Copy the native library for the
-       current platform next to the executable so the smoke tests work with 'dotnet run'.
-       RmlNativeArch selects which Windows DLL is copied; CI passes x86 for the 32-bit job. -->
-  <PropertyGroup>
-    <RmlNativeArch Condition="'$(RmlNativeArch)' == ''">x64</RmlNativeArch>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="..\..\RmlUi.Net\runtimes\win-x64\native\RmlUiNative.dll"
-          Link="RmlUiNative.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(RmlNativeArch)' == 'x64' and Exists('..\..\RmlUi.Net\runtimes\win-x64\native\RmlUiNative.dll')" />
-    <None Include="..\..\RmlUi.Net\runtimes\win-x86\native\RmlUiNative.dll"
-          Link="RmlUiNative.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('Windows')) and '$(RmlNativeArch)' == 'x86' and Exists('..\..\RmlUi.Net\runtimes\win-x86\native\RmlUiNative.dll')" />
-    <None Include="..\..\RmlUi.Net\runtimes\linux-x64\native\libRmlUiNative.so"
-          Link="libRmlUiNative.so"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('Linux')) and Exists('..\..\RmlUi.Net\runtimes\linux-x64\native\libRmlUiNative.so')" />
-    <None Include="..\..\RmlUi.Net\runtimes\osx-x64\native\RmlUiNative.dylib"
-          Link="RmlUiNative.dylib"
-          CopyToOutputDirectory="PreserveNewest"
-          Condition="$([MSBuild]::IsOSPlatform('OSX')) and Exists('..\..\RmlUi.Net\runtimes\osx-x64\native\RmlUiNative.dylib')" />
-  </ItemGroup>
-
-  <!-- Delete a previously copied native DLL of the other architecture before each build:
-       CopyToOutputDirectory=PreserveNewest compares timestamps only and would otherwise
-       keep a stale 32-bit/64-bit DLL when RmlNativeArch is switched. -->
-  <Target Name="RemoveStaleNativeCopy" BeforeTargets="BeforeBuild">
-    <Delete Files="$(TargetDir)RmlUiNative.dll" Condition="Exists('$(TargetDir)RmlUiNative.dll')" />
-  </Target>
-
+  <Import Project="../NativeTest.targets" />
 </Project>

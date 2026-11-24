@@ -5,6 +5,15 @@ namespace RmlUiNet.Native
 {
     internal static class Rml
     {
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_BindingAbiVersion")]
+        public static extern int BindingAbiVersion();
+
+        [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ObserveLifetime")]
+        public static extern void ObserveLifetime(OnDestroyed contextDestroyed, OnDestroyed elementDestroyed);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void OnDestroyed(IntPtr pointer);
+
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Initialise")]
         [return: MarshalAs(UnmanagedType.I1)]
         public static extern bool Initialise();
@@ -23,11 +32,11 @@ namespace RmlUiNet.Native
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_LoadFontFace")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool LoadFontFace(string fileName, bool fallbackFace, FontWeight weight);
+        public static extern bool LoadFontFace([MarshalAs(UnmanagedType.LPUTF8Str)] string fileName, [MarshalAs(UnmanagedType.I1)] bool fallbackFace, FontWeight weight);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_LoadFontFaceEx")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool LoadFontFaceEx(string fileName, string family, FontStyle style, FontWeight weight, bool fallbackFace, int faceIndex);
+        public static extern bool LoadFontFaceEx([MarshalAs(UnmanagedType.LPUTF8Str)] string fileName, [MarshalAs(UnmanagedType.LPUTF8Str)] string family, FontStyle style, FontWeight weight, [MarshalAs(UnmanagedType.I1)] bool fallbackFace, int faceIndex);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_CreateEventListener")]
         public static extern IntPtr CreateEventListener(OnProcessEvent onProcessEvent, OnAttachEvent onAttachEvent, OnDetachEvent onDetachEvent);
@@ -37,7 +46,7 @@ namespace RmlUiNet.Native
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RemoveContext")]
         [return: MarshalAs(UnmanagedType.I1)]
-        public static extern bool RemoveContext(string name);
+        public static extern bool RemoveContext([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RegisterPlugin")]
         public static extern void RegisterPlugin(IntPtr pluginPtr);
@@ -49,13 +58,13 @@ namespace RmlUiNet.Native
         public static extern IntPtr GetSystemInterface();
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_CreateString")]
-        public static extern IntPtr CreateString(string str);
+        public static extern IntPtr CreateString([MarshalAs(UnmanagedType.LPUTF8Str)] string str);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_Log")]
-        public static extern void Log(LogType type, string str);
+        public static extern void Log(LogType type, [MarshalAs(UnmanagedType.LPUTF8Str)] string str);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_UpdateString")]
-        public static extern void UpdateString(IntPtr str, string newContent);
+        public static extern void UpdateString(IntPtr str, [MarshalAs(UnmanagedType.LPUTF8Str)] string newContent);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_FreeString")]
         public static extern void FreeString(IntPtr str);
@@ -64,13 +73,13 @@ namespace RmlUiNet.Native
         public static extern void FreeStringBuffer(IntPtr str);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_RegisterEventType")]
-        public static extern EventId RegisterEventType(string type, bool interruptible, bool bubbles, DefaultActionPhase default_action_phase);
+        public static extern EventId RegisterEventType([MarshalAs(UnmanagedType.LPUTF8Str)] string type, [MarshalAs(UnmanagedType.I1)] bool interruptible, [MarshalAs(UnmanagedType.I1)] bool bubbles, DefaultActionPhase default_action_phase);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnProcessEvent(IntPtr eventPtr);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnAttachEvent(IntPtr elementPtr, string elementType);
+        internal delegate void OnAttachEvent(IntPtr elementPtr, [MarshalAs(UnmanagedType.LPUTF8Str)] string elementType);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnDetachEvent(IntPtr elementPtr, string elementType);
+        internal delegate void OnDetachEvent(IntPtr elementPtr, [MarshalAs(UnmanagedType.LPUTF8Str)] string elementType);
     }
 }

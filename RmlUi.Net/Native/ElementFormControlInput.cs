@@ -9,6 +9,6 @@ namespace RmlUiNet.Native
         public static extern IntPtr GetValue(IntPtr element);
 
         [DllImport("RmlUiNative", CallingConvention = CallingConvention.Cdecl, EntryPoint = "rml_ElementFormControlInput_SetValue")]
-        public static extern void SetValue(IntPtr element, string value);
+        public static extern void SetValue(IntPtr element, [MarshalAs(UnmanagedType.LPUTF8Str)] string value);
     }
 }

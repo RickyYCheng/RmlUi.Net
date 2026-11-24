@@ -84,5 +84,6 @@ RMLUI_CAPI void rml_Dictionary_Remove(Rml::Dictionary* dict, const char* prop) {
 }
 
 RMLUI_CAPI Rml::Variant* rml_Dictionary_Get(Rml::Dictionary *dict, const char *prop) {
-	return &(*dict)[prop];
+    const auto it = dict->find(prop);
+    return it == dict->end() ? nullptr : &it->second;
 }

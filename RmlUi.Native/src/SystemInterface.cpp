@@ -4,12 +4,12 @@
 #include <string>
 
 typedef double(*onGetElapsedTime)();
-typedef const char *(*onTranslateString)(int *changeCount, const char *input);
+typedef int(*onTranslateString)(Rml::String* output, const char* input);
 typedef bool(*onLogMessage)(Rml::Log::Type type, const char *message);
-typedef char*(*onJoinPath)(const char *document_path, const char *path);
-typedef bool(*onSetMouseCursor)(const char *message);
+typedef void(*onJoinPath)(Rml::String* output, const char* document_path, const char* path);
+typedef void(*onSetMouseCursor)(const char *message);
 typedef void(*onSetClipboardText)(const char *message);
-typedef const char* (*onGetClipboardText)();
+typedef void(*onGetClipboardText)(Rml::String* output);
 typedef void(*onActivateKeyboard)(float caret_x, float caret_y, float line_height);
 typedef void(*onDeactivateKeyboard)();
 
@@ -46,11 +46,10 @@ public:
     }
 
     int TranslateString(Rml::String &translated, const Rml::String &input) override {
-        int changeCount = 0;
-        //translated = (*m_onTranslateString)(&changeCount, input.c_str());
-        translated = input;
-
-        return changeCount;
+        int changes = (*m_onTranslateString)(&translated, input.c_str());
+        if (!changes)
+            translated = input;
+        return changes;
     }
 
     bool LogMessage(Rml::Log::Type type, const Rml::String &message) override {
@@ -58,7 +57,7 @@ public:
     }
 
     void JoinPath(Rml::String& translated_path, const Rml::String& document_path, const Rml::String& path) override {
-        translated_path = (*m_onJoinPath)(document_path.c_str(), path.c_str());
+        (*m_onJoinPath)(&translated_path, document_path.c_str(), path.c_str());
     }
 
     void SetMouseCursor(const Rml::String &cursor_name) override {
@@ -70,7 +69,7 @@ public:
     }
 
     void GetClipboardText(Rml::String &text) override {
-        text = (*m_onGetClipboardText)();
+        (*m_onGetClipboardText)(&text);
     }
 
     void ActivateKeyboard(Rml::Vector2f caret_position, float line_height) override {
@@ -89,3 +88,5 @@ RMLUI_CAPI void *rml_SystemInterface_New(::onGetElapsedTime onGetElapsedTime, ::
     return new SystemInterface(onGetElapsedTime, onTranslateString, onLogMessage, onJoinPath, onSetMouseCursor,
             onSetClipboardText, onGetClipboardText, onActivateKeyboard, onDeactivateKeyboard);
 }
+
+RMLUI_CAPI void rml_SystemInterface_Free(SystemInterface* instance) { delete instance; }

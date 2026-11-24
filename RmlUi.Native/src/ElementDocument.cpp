@@ -78,7 +78,7 @@ RMLUI_CAPI void rml_ElementDocument_Close(Rml::ElementDocument* document) {
 typedef void(*onLoadInlineScript)(const char *context, const char *source_path, int source_line);
 typedef void(*onLoadExternalScript)(const char *source_path);
 
-class ElementDocumentCustom : Rml::ElementDocument {
+class ElementDocumentCustom : public Rml::ElementDocument {
 private:
     ::onLoadInlineScript m_onLoadInlineScript;
     ::onLoadExternalScript m_onLoadExternalScript;
@@ -102,13 +102,10 @@ public:
     }
 };
 
-static Rml::Pool<ElementDocumentCustom> pool_element(200, true);
-
 RMLUI_CAPI void *rml_ElementDocument_New(::onLoadInlineScript onLoadInlineScript, ::onLoadExternalScript onLoadExternalScript) {
-    ElementDocumentCustom* ptr = pool_element.AllocateAndConstruct("body", onLoadInlineScript, onLoadExternalScript);
-    return ptr;
+    return RmlNative::OwnBindingElement(new ElementDocumentCustom("body", onLoadInlineScript, onLoadExternalScript));
 }
 
 RMLUI_CAPI void rml_ElementDocument_Free(ElementDocumentCustom *element) {
-	pool_element.DestroyAndDeallocate(element);
+    RmlNative::TakeBindingElement(element);
 }

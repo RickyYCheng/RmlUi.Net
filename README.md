@@ -1,114 +1,72 @@
 # RmlUi.Net
 
-C# bindings for [RmlUi](https://github.com/mikke89/RmlUi), a native UI library
-based on HTML/CSS. Embedded RmlUi: **6.3**.
+C# bindings for [RmlUi](https://github.com/mikke89/RmlUi), an HTML/CSS-style UI
+library for applications with their own renderer. The bindings target .NET 8
+and include RmlUi 6.3 and FreeType 2.14.3.
 
-## Repository layout
+The project descends from [Chorizite/RmlUi.Net](https://github.com/Chorizite/RmlUi.Net)
+through [PourrezJ/RmlUi.Net](https://github.com/PourrezJ/RmlUi.Net). The package
+from this repository is `RickyYC.RmlUi.Net`, not `RmlUi.Net` or `PourrezJ.RmlUi.Net`.
+See [the package README](RmlUi.Net/README.md) for usage and
+[third-party notices](THIRD-PARTY-NOTICES.md) for redistribution information.
 
-- `RmlUi.Native/` — native `RmlUiNative` library (C++17, CMake), RmlUi and
-  FreeType sources as git submodules.
-- `RmlUi.Net/` — managed library (`net8.0`) and per-RID native artifacts
-  (`runtimes/<rid>/native/`).
-- `tools/RmlUiExportParity/` — checks native exports vs. managed P/Invoke
-  imports (built-in PE/ELF/Mach-O parsers, zero dependencies).
-- `tests/RmlUi.Net.SmokeTests/` — smoke suite exercising every public API.
-- `tests/RmlUi.Net.UnitTests/` — xunit suite for behaviour (element tree,
-  selectors, geometry, events, data models, input, fonts, wrapper cache).
-- `KNOWN_ISSUES.md` — vendored-RmlUi behaviours that surprise callers
-  (zero-size layout without a font, non-DOM children, case-sensitive
-  selectors, …), with source references. Worth reading before filing a bug.
+## Supported runtime targets
 
-## Prerequisites
+| Host | .NET runtime identifiers |
+| --- | --- |
+| Windows | `win-x64`, `win-x86` |
+| Linux with glibc | `linux-x64` |
+| macOS | `osx-x64`, `osx-arm64` |
 
-- .NET 8 SDK
-- CMake ≥ 3.21 + Ninja
-- Windows: Visual Studio 2022 with the C++ workload; Linux: GCC/G++; macOS: Xcode CLT
+Linux CI builds on Ubuntu 22.04. The macOS builds target macOS 12 or later.
+Windows Arm64, Linux Arm64, musl and mobile targets are not in the CI matrix.
 
-## Building the native library
+## Build and test
 
-```powershell
-# Windows x64 (x64 developer prompt)
-cmake --preset x64-release -S RmlUi.Native
-cmake --build RmlUi.Native/out/build/x64-release --parallel
+Use .NET 10 SDK to build and .NET 8 runtime to test. Native builds need Git,
+CMake 3.21 or later, Ninja and a C++ compiler. On Windows, use the Visual Studio
+developer prompt matching the target architecture. On macOS, use Xcode command
+line tools and build on the architecture you want to test.
 
-# Windows x86 (x86 developer prompt, vcvars32)
-cmake -S RmlUi.Native -B RmlUi.Native/out/build/x86-release -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build RmlUi.Native/out/build/x86-release --parallel
-
-# Linux
-cmake --preset linux-release -S RmlUi.Native
-cmake --build RmlUi.Native/out/build/linux-release --parallel
-
-# macOS (universal binary: arm64 + x86_64)
-cmake --preset macos-release -S RmlUi.Native
-cmake --build RmlUi.Native/out/build/macos-release --parallel
+```sh
+git submodule update --init
+cmake -S RmlUi.Native -B RmlUi.Native/out/local -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build RmlUi.Native/out/local --parallel
 ```
 
-Outputs are written to `out/build/<preset>/bin/` (`RmlUiNative.dll`,
-`libRmlUiNative.so` or `RmlUiNative.dylib`).
+Copy the library from `RmlUi.Native/out/local/bin/` into the directory for the
+current runtime under `RmlUi.Net/runtimes/<rid>/native/`. The file names are
+`RmlUiNative.dll`, `libRmlUiNative.so` and `RmlUiNative.dylib` for Windows, Linux
+and macOS respectively. Use separate build and staging directories for different
+architectures. The source tree does not ship prebuilt native binaries.
 
-## Building the managed library and testing
-
-```powershell
-dotnet build RmlUi.Net/RmlUi.Net.csproj -c Release -warnaserror
-
-# Export/import parity check (fails if any DllImport has no native export)
-dotnet build tools/RmlUiExportParity/RmlUiExportParity.csproj -c Release
-dotnet tools/RmlUiExportParity/bin/Release/net8.0/RmlUiExportParity.dll `
-  --assembly RmlUi.Net/bin/Release/net8.0/RmlUi.Net.dll `
-  --native RmlUi.Native/out/build/x64-release/bin/RmlUiNative.dll
-
-# Smoke tests (stage the current platform's native library in
-# RmlUi.Net/runtimes/<rid>/native/ first, see below)
-dotnet build tests/RmlUi.Net.SmokeTests/RmlUi.Net.SmokeTests.csproj -c Release -warnaserror
-dotnet tests/RmlUi.Net.SmokeTests/bin/Release/net8.0/RmlUi.Net.SmokeTests.dll   # add --window on Windows
-
-# Unit tests
-dotnet test tests/RmlUi.Net.UnitTests/RmlUi.Net.UnitTests.csproj -c Release
+```sh
+dotnet build RmlUi.Net.sln -c Release -warnaserror
+dotnet test RmlUi.Net.sln -c Release --no-build
+dotnet run --project tests/RmlUi.Net.SmokeTests -c Release
 ```
 
-Both test projects copy the current platform's native library from
-`RmlUi.Net/runtimes/<rid>/native/` into their output directory. Pass
-`-p:RmlNativeArch=x86` to test against the 32-bit Windows build.
+Pass `-p:RmlNativeRid=win-x86` when building the Windows 32-bit smoke tests, then
+run the generated DLL with a 32-bit .NET 8 host. Add `--window` on Windows to
+exercise window creation. The [export checker](tools/RmlUiExportParity) compares
+managed imports with exports in PE, ELF and Mach-O binaries:
 
-## Packaging
-
-Stage the four native artifacts in `RmlUi.Net/runtimes/`:
-
-```
-runtimes/win-x64/native/RmlUiNative.dll
-runtimes/win-x86/native/RmlUiNative.dll
-runtimes/linux-x64/native/libRmlUiNative.so
-runtimes/osx-x64/native/RmlUiNative.dylib
+```sh
+dotnet run --project tools/RmlUiExportParity -c Release -- \
+  --assembly RmlUi.Net/bin/Release/net8.0/RmlUi.Net.dll \
+  --native RmlUi.Native/out/local/bin/libRmlUiNative.so
 ```
 
-```powershell
-dotnet pack RmlUi.Net/RmlUi.Net.csproj -c Release -o artifacts
+## Package and release
+
+`dotnet pack` requires all five runtime libraries and the initialized submodules.
+For a local test feed only, use a distinct version:
+
+```sh
+dotnet pack RmlUi.Net/RmlUi.Net.csproj -c Release -o artifacts \
+  -p:LocalPack=true -p:PackageVersion=1.3.0-local.1
 ```
 
-`dotnet pack` fails if any of the four artifacts is missing
-(`ValidateRuntimeArtifacts` target). The version is set via `VersionPrefix` in
-the `.csproj` (see `CHANGELOG.md`).
-
-## NuGet
-
-This repository is an independently maintained fork of the upstream
-`Chorizite/RmlUi.Net` project. It is published on nuget.org under its own
-package id:
-
-```powershell
-dotnet add package RickyYC.RmlUi.Net
-```
-
-The `RmlUi.Net` id on nuget.org belongs to the upstream project and is not
-published from this repository.
-
-## CI
-
-- `.github/workflows/ci.yml`: push/PR — native build + parity + smoke tests on
-  every platform, package assembly.
-- `.github/workflows/release.yml`: manual publishing — native rebuild, repack,
-  GitHub Packages push, GitHub release, and nuget.org push via **Trusted
-  Publishing** (an OIDC policy on nuget.org bound to this workflow file; no
-  API key secrets). Requires the repository variable `NUGET_USER` set to the
-  nuget.org profile name that owns the policy.
+For publication, use the [release checklist](RELEASING.md). Do not publish a
+local or partial package. Use [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for limitations
+of the embedded layout engine.

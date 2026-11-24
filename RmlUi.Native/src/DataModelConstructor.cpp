@@ -7,15 +7,13 @@
 
 typedef void (*dataEventFunc)(Rml::DataModelHandle* model_handle, Rml::Event& evt, Rml::Variant** variants, int num_variants);
 
-static std::unordered_map<Rml::DataModelHandle*, Rml::DataModelHandle> dataModelHandlePool;
-
 // Storage for string arrays bound through rml_DataModelConstructor_BindStringArray.
 // RmlUi binds data variables by pointer, so the backing vector must outlive the binding.
-static std::unordered_map<std::string, Rml::Vector<Rml::String>> stringArrayPool;
+static std::unordered_map<Rml::DataModelConstructor*, std::unordered_map<std::string, Rml::Vector<Rml::String>>> stringArrayPool;
 
 // Storage for the fake struct handles returned by rml_DataModelConstructor_RegisterStruct.
 // A struct type can only be registered once per data type register.
-static std::unordered_map<const void*, Rml::StructHandle<FakeStruct>> structHandlePool;
+static std::unordered_map<Rml::DataModelConstructor*, Rml::StructHandle<FakeStruct>> structHandlePool;
 
 RMLUI_CAPI bool rml_DataModelConstructor_BindFloat(Rml::DataModelConstructor* data_model, const char* name, float* data) {
   return data_model->Bind(name, data);
@@ -37,47 +35,32 @@ RMLUI_CAPI bool rml_DataModelConstructor_BindString(Rml::DataModelConstructor* d
   return data_model->Bind(name, data);
 }
 
-static std::string GenerateKey(Rml::DataModelConstructor* data_model, const char* name) {
-    std::stringstream key;
-    key << data_model << "_" << name;
-    return key.str();
-}
-
 RMLUI_CAPI bool rml_DataModelConstructor_BindStringArray(Rml::DataModelConstructor* data_model, const char* name, const char** data, int count) {
   if (data_model == nullptr || name == nullptr || (data == nullptr && count > 0) || count < 0) {
     return false;
   }
 
-  const std::string key = GenerateKey(data_model, name);
-  Rml::Vector<Rml::String>& values = stringArrayPool[key];
-  values.clear();
+  auto& arrays = stringArrayPool[data_model];
+  if (arrays.find(name) != arrays.end()) {
+    return false;
+  }
+  Rml::Vector<Rml::String> values;
   values.reserve(static_cast<size_t>(count));
   for (int i = 0; i < count; ++i) {
     values.emplace_back(data[i] != nullptr ? data[i] : "");
   }
 
-  if (!data_model->RegisterArray<Rml::Vector<Rml::String>>()) {
-    stringArrayPool.erase(key);
-    return false;
-  }
-
-  if (!data_model->Bind(name, &values)) {
-    stringArrayPool.erase(key);
+  auto* types = data_model->GetDataTypeRegister();
+  using StringArray = Rml::Vector<Rml::String>;
+  types->RegisterDefinition(Rml::Family<StringArray>::Id(),
+      Rml::MakeUnique<Rml::ArrayDefinition<StringArray>>(types->GetDefinition<Rml::String>()));
+  auto inserted = arrays.emplace(name, std::move(values));
+  if (!data_model->Bind(name, &inserted.first->second)) {
+    arrays.erase(inserted.first);
     return false;
   }
 
   return true;
-}
-
-RMLUI_CAPI bool rml_DataModelConstructor_UnbindStringArray(Rml::DataModelConstructor* data_model, const char* name) {
-  if (data_model == nullptr || name == nullptr) {
-    return false;
-  }
-
-  // RmlUi has no API to unbind a variable from a data model; erasing our pool releases
-  // the backing storage once no longer referenced by the managed binding. The data model
-  // itself keeps the binding until it is destroyed.
-  return stringArrayPool.erase(GenerateKey(data_model, name)) > 0;
 }
 
 RMLUI_CAPI Rml::StructHandle<FakeStruct>* rml_DataModelConstructor_RegisterStruct(Rml::DataModelConstructor* data_model, const char* name) {
@@ -89,18 +72,12 @@ RMLUI_CAPI Rml::StructHandle<FakeStruct>* rml_DataModelConstructor_RegisterStruc
     return nullptr;
   }
 
-  const void* type_register = data_model->GetDataTypeRegister();
-  if (type_register == nullptr) {
-    return nullptr;
-  }
-
-  auto it = structHandlePool.find(type_register);
+  auto it = structHandlePool.find(data_model);
   if (it == structHandlePool.end()) {
-    Rml::StructHandle<FakeStruct> handle = data_model->RegisterStruct<FakeStruct>();
-    if (!handle) {
-      return nullptr;
-    }
-    it = structHandlePool.emplace(type_register, handle).first;
+    auto* types = data_model->GetDataTypeRegister();
+    types->RegisterDefinition(Rml::Family<FakeStruct>::Id(), Rml::MakeUnique<Rml::StructDefinition>());
+    auto* definition = static_cast<Rml::StructDefinition*>(types->GetDefinition<FakeStruct>());
+    it = structHandlePool.try_emplace(data_model, types, definition).first;
   }
 
   return &it->second;
@@ -113,15 +90,13 @@ RMLUI_CAPI bool rml_DataModelConstructor_BindVariable(Rml::DataModelConstructor*
 Rml::DataEventFunc MakeEventCallbackWrapper(::dataEventFunc func) {
   return [func](Rml::DataModelHandle model_handle, Rml::Event &event, const Rml::VariantList &variants) {
     int size = static_cast<int>(variants.size());
-    Rml::Variant** pointer_array = new Rml::Variant*[size];
+    Rml::Vector<Rml::Variant*> pointer_array(size);
 
     for (int i = 0; i < size; ++i) {
       pointer_array[i] = const_cast<Rml::Variant*>(&variants[i]);
     }
 
-    func(&model_handle, event, pointer_array, size);
-
-    delete[] pointer_array;
+    func(&model_handle, event, pointer_array.data(), size);
   };
 }
 
@@ -130,14 +105,15 @@ RMLUI_CAPI bool rml_DataModelConstructor_BindEventCallback(Rml::DataModelConstru
 }
 
 RMLUI_CAPI Rml::DataModelHandle* rml_DataModelConstructor_GetModelHandle(Rml::DataModelConstructor* data_model) {
-    Rml::DataModelHandle handle = data_model->GetModelHandle();
-    dataModelHandlePool[&handle] = handle;
-    return &dataModelHandlePool[&handle];
+    return new Rml::DataModelHandle(data_model->GetModelHandle());
 }
 
 RMLUI_CAPI void rml_DataModelHandle_Free(Rml::DataModelHandle* handle_ptr) {
-  auto it = dataModelHandlePool.find(handle_ptr);
-  if (it != dataModelHandlePool.end()) {
-    dataModelHandlePool.erase(it);
-  }
+  delete handle_ptr;
+}
+
+RMLUI_CAPI void rml_DataModelConstructor_Free(Rml::DataModelConstructor* instance) {
+  stringArrayPool.erase(instance);
+  structHandlePool.erase(instance);
+  delete instance;
 }

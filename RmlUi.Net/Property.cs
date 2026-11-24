@@ -21,7 +21,7 @@ namespace RmlUiNet
             var strPtr = Native.Property.GetString(NativePtr, defaultValue);
             if (strPtr == IntPtr.Zero) return defaultValue;
 
-            var strValue = Marshal.PtrToStringAnsi(strPtr);
+            var strValue = Marshal.PtrToStringUTF8(strPtr);
             Native.Rml.FreeStringBuffer(strPtr);
             return strValue ?? defaultValue;
         }

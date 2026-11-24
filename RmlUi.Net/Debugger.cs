@@ -18,16 +18,20 @@ namespace RmlUiNet
 
         public static bool IsVisible()
         {
+            Rml.RequireInitialised();
             return Native.Debugger.IsVisible();
         }
 
         public static void SetVisible(bool visible)
         {
+            Rml.RequireInitialised();
             Native.Debugger.SetVisible(visible);
         }
 
         public static void Shutdown()
         {
+            Rml.VerifyOutsideCallback();
+            Rml.RequireInitialised();
             Native.Debugger.Shutdown();
         }
     }
