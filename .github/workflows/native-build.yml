@@ -13,38 +13,44 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-2022, rid: win-x64, arch: x64, library: RmlUiNative.dll }
-          - { os: windows-2022, rid: win-x86, arch: x86, library: RmlUiNative.dll }
+          - { os: windows-2022, rid: win-x64, msvc-arch: amd64, library: RmlUiNative.dll }
+          - { os: windows-2022, rid: win-x86, msvc-arch: x86, library: RmlUiNative.dll }
           - { os: ubuntu-22.04, rid: linux-x64, library: libRmlUiNative.so }
           - { os: macos-15-intel, rid: osx-x64, library: RmlUiNative.dylib }
           - { os: macos-15, rid: osx-arm64, library: RmlUiNative.dylib }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: |
             8.0.x
             10.0.x
-      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-        if: runner.os == 'Windows'
-        with:
-          arch: ${{ matrix.arch }}
       - name: Build native library
-        shell: bash
+        shell: pwsh
+        env:
+          MSVC_ARCH: ${{ matrix.msvc-arch }}
         run: |
-          args=()
-          if [[ "$RUNNER_OS" == macOS ]]; then args+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"); fi
-          cmake -S RmlUi.Native -B RmlUi.Native/out/ci -G Ninja -DCMAKE_BUILD_TYPE=Release "${args[@]}"
+          if ($IsWindows) {
+            $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+            $vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Visual Studio 2022 with MSVC x86/x64 tools was not found.' }
+            & "$vs\Common7\Tools\Launch-VsDevShell.ps1" -Arch $env:MSVC_ARCH -HostArch amd64 -SkipAutomaticLocation
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $cmakeArgs = @()
+          if ($IsMacOS) { $cmakeArgs += '-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0' }
+          cmake -S RmlUi.Native -B RmlUi.Native/out/ci -G Ninja -DCMAKE_BUILD_TYPE=Release @cmakeArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build RmlUi.Native/out/ci --parallel
       - name: Verify managed imports
         shell: bash
         run: |
-          dotnet build RmlUi.Net/RmlUi.Net.csproj -c Release -warnaserror
-          dotnet run --project tools/RmlUiExportParity -c Release -- \
-            --assembly RmlUi.Net/bin/Release/net8.0/RmlUi.Net.dll \
+          dotnet build RmlUi.Net/RmlUi.Net.csproj -c Release -warnaserror -o artifacts/parity
+          dotnet run --project tools/RmlUiExportParity -c Release -p:UseAppHost=false -- \
+            --assembly artifacts/parity/RmlUi.Net.dll \
             --native "RmlUi.Native/out/ci/bin/${{ matrix.library }}"
       - name: Stage current platform
         shell: bash
@@ -55,7 +61,7 @@ jobs:
       - name: Run unit tests
         if: matrix.rid != 'win-x86'
         run: dotnet test tests/RmlUi.Net.UnitTests -c Release -warnaserror -p:RmlNativeRid=${{ matrix.rid }}
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-${{ matrix.rid }}
           path: RmlUi.Net/runtimes/
